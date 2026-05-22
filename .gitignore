@@ -40,6 +40,7 @@ ENV/
 *.onnx
 *.tflite
 *.bin
+medical-ventilator/source/Ventilator.rar
 
 # Node / frontend
 node_modules/
