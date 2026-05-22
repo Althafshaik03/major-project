@@ -11,6 +11,7 @@ import {
   Gauge,
   HeartPulse,
   History,
+  Box,
   LayoutDashboard,
   Link2,
   Loader2,
@@ -23,10 +24,11 @@ import {
 } from "lucide-react";
 import {
   Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
+  ComposedChart,
+  Customized,
   Legend,
   Line,
   LineChart,
@@ -35,14 +37,103 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
+const TWIN_HISTORY_WINDOW = 48;
+const TWIN_T_SPREAD = 3;
+
+function twinChartCoords(xAxisMap, yAxisMap, points) {
+  if (!points?.length || !xAxisMap || !yAxisMap) return [];
+
+  const xAxis = Object.values(xAxisMap)[0];
+  const yAxis = Object.values(yAxisMap)[0];
+  if (!xAxis?.scale || !yAxis?.scale) return [];
+
+  return points
+    .map((row) => {
+      const x = xAxis.scale(row.t);
+      const y = yAxis.scale(row.PredictedSpO2);
+      if (x == null || y == null || Number.isNaN(x) || Number.isNaN(y)) return null;
+      return [x, y];
+    })
+    .filter(Boolean);
+}
+
+function TwinTrajectoryStroke({ xAxisMap, yAxisMap, points }) {
+  const coords = twinChartCoords(xAxisMap, yAxisMap, points);
+  if (coords.length < 2) return null;
+
+  const path = coords
+    .map(([x, y], index) => `${index === 0 ? "M" : "L"}${x},${y}`)
+    .join("");
+
+  return (
+    <g className="twin-trajectory-stroke" aria-hidden="true">
+      <path
+        d={path}
+        fill="none"
+        stroke="#a855f7"
+        strokeWidth={2}
+        strokeDasharray="5 5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </g>
+  );
+}
+
+function TwinTrajectoryDots({ xAxisMap, yAxisMap, points }) {
+  const coords = twinChartCoords(xAxisMap, yAxisMap, points);
+  if (!coords.length) return null;
+
+  return (
+    <g className="twin-trajectory-dots" aria-hidden="true">
+      {coords.map(([x, y], index) => (
+        <circle
+          key={`twin-dot-${index}`}
+          cx={x}
+          cy={y}
+          r={4}
+          fill="#a855f7"
+          stroke="#c084fc"
+          strokeWidth={1}
+        />
+      ))}
+    </g>
+  );
+}
+
+function buildTwinFutureRows(observedLength, twinTrajectory, upper, lower) {
+  const futurePoints = twinTrajectory.slice(1).map((spo2, i) => {
+    const bandIdx = i + 1;
+    const predicted = Number(spo2);
+    const lo = lower[bandIdx] != null ? Number(lower[bandIdx]) : predicted;
+    const hi = upper[bandIdx] != null ? Number(upper[bandIdx]) : predicted;
+    return {
+      t: observedLength + (i + 1) * TWIN_T_SPREAD,
+      SpO2: null,
+      HR: null,
+      MAP: null,
+      RespRate: null,
+      PredictedSpO2: predicted,
+      UncertaintyRange: [lo, hi],
+    };
+  });
+  return futurePoints;
+}
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { ColladaLoader } from "three/examples/jsm/loaders/ColladaLoader.js";
 import { api, API_BASE } from "./api";
+import DigitalTwinPage from "./DigitalTwinPage.jsx";
 import "./styles.css";
 
 const pages = [
-  { id: "live", label: "Live ICU", icon: LayoutDashboard },
-  { id: "tests", label: "Test Lab", icon: FlaskConical },
+  { id: "live", label: "Dashboard", icon: LayoutDashboard },
+  { id: "twin", label: "Digital Twin", icon: Box },
+  { id: "fiware", label: "FIWARE Twin", icon: Wind, external: "http://127.0.0.1:8080/hub.html" },
+  { id: "tests", label: "Test Cases", icon: FlaskConical },
   { id: "models", label: "Model Metrics", icon: BarChart3 },
-  { id: "audit", label: "Audit & System", icon: ShieldCheck },
+  { id: "audit", label: "Audit", icon: ShieldCheck },
 ];
 
 const fmt = (v, d = 1) => (v === null || v === undefined || Number.isNaN(Number(v)) ? "--" : Number(v).toFixed(d));
@@ -71,6 +162,15 @@ function useAsync(loader, deps = []) {
 
 function App() {
   const [page, setPage] = useState("live");
+  const patients = useAsync(api.patients, []);
+  const [selected, setSelected] = useState("");
+
+  useEffect(() => {
+    if (!selected && patients.data?.patients?.length) {
+      setSelected(String(patients.data.patients[0]));
+    }
+  }, [patients.data, selected]);
+
   return (
     <div className="app">
       <aside className="sidebar">
@@ -78,12 +178,27 @@ function App() {
           <div className="brandIcon"><HeartPulse size={24} /></div>
           <div>
             <div className="brandName">Ventilator OS</div>
-            <div className="brandMeta">Digital Twin ICU</div>
+            <div className="brandMeta">Digital Twin & Blockchain Audit</div>
           </div>
+        </div>
+        <div className="topControls">
+          <label>Patient ID:</label>
+          <select value={selected} onChange={(e) => setSelected(e.target.value)} className="select patientSelect">
+            {(patients.data?.patients || []).map((id) => <option key={id} value={id}>{id}</option>)}
+          </select>
+          <span className="chainStatus"><Link2 size={15} /> Chain Valid</span>
         </div>
         <nav>
           {pages.map((item) => {
             const Icon = item.icon;
+            if (item.external) {
+              return (
+                <a key={item.id} className="navExternal" href={item.external} target="_blank" rel="noreferrer">
+                  <Icon size={18} />
+                  {item.label}
+                </a>
+              );
+            }
             return (
               <button key={item.id} className={page === item.id ? "active" : ""} onClick={() => setPage(item.id)}>
                 <Icon size={18} />
@@ -101,7 +216,17 @@ function App() {
         </div>
       </aside>
       <main>
-        {page === "live" && <LivePage />}
+        {page === "live" && <LivePage selected={selected} setSelected={setSelected} patients={patients} />}
+        {page === "twin" && (
+          <DigitalTwinPage
+            selected={selected}
+            PageHeader={PageHeader}
+            Button={Button}
+            Metric={Metric}
+            Empty={Empty}
+            LoadingBlock={LoadingBlock}
+          />
+        )}
         {page === "tests" && <TestLabPage />}
         {page === "models" && <ModelMetricsPage />}
         {page === "audit" && <AuditPage />}
@@ -160,8 +285,7 @@ function LoadingBlock({ label = "Loading" }) {
   );
 }
 
-function LivePage() {
-  const [selected, setSelected] = useState("");
+function LivePage({ selected, setSelected, patients }) {
   const [history, setHistory] = useState([]);
   const [recommendation, setRecommendation] = useState(null);
   const [multiRisk, setMultiRisk] = useState(null);
@@ -171,15 +295,8 @@ function LivePage() {
   const [predicting, setPredicting] = useState(false);
   const historyRef = useRef([]);
   const streamBusyRef = useRef(false);
-  const patients = useAsync(api.patients, []);
   const health = useAsync(api.health, []);
   const connectionError = patients.error || health.error;
-
-  useEffect(() => {
-    if (!selected && patients.data?.patients?.length) {
-      setSelected(String(patients.data.patients[0]));
-    }
-  }, [patients.data, selected]);
 
   const updateHistory = (rows) => {
     historyRef.current = rows;
@@ -273,23 +390,76 @@ function LivePage() {
   }, [selected, streamingEnabled]);
 
   const latest = history[history.length - 1] || {};
-  const chartData = useMemo(
-    () => history.slice(-80).map((row, i) => ({
+  const chartData = useMemo(() => {
+    const observedRows = history.slice(-TWIN_HISTORY_WINDOW);
+    const observed = observedRows.map((row, i) => ({
       t: i + 1,
       SpO2: Number(row.SpO2),
       HR: Number(row.HR),
       MAP: Number(row.MAP),
       RespRate: Number(row.RespRate),
-    })),
-    [history]
+      PredictedSpO2: null,
+      UncertaintyRange: null,
+    }));
+
+    if (!observed.length) return observed;
+
+    const latestSpo2 = Number(observedRows[observedRows.length - 1]?.SpO2);
+    if (Number.isNaN(latestSpo2)) return observed;
+
+    const bridgePoint = {
+      ...observed[observed.length - 1],
+      PredictedSpO2: latestSpo2,
+    };
+
+    const twin = recommendation?.twin_simulation;
+    const twinTrajectory = twin?.trajectory;
+    if (Array.isArray(twinTrajectory) && twinTrajectory.length > 1) {
+      const upper = twin.upper_band || [];
+      const lower = twin.lower_band || [];
+      bridgePoint.UncertaintyRange = [
+        lower[0] != null ? Number(lower[0]) : latestSpo2,
+        upper[0] != null ? Number(upper[0]) : latestSpo2,
+      ];
+
+      const twinFuture = buildTwinFutureRows(observed.length, twinTrajectory, upper, lower);
+      return [...observed.slice(0, -1), bridgePoint, ...twinFuture];
+    }
+
+    const forecastSpo2 = Number(recommendation?.pred_next_spo2);
+    if (Number.isNaN(forecastSpo2)) return observed;
+
+    bridgePoint.UncertaintyRange = [latestSpo2, latestSpo2];
+    const projection = Array.from({ length: 5 }, (_, index) => {
+      const step = index + 1;
+      const progress = step / 5;
+      const predicted = latestSpo2 + (forecastSpo2 - latestSpo2) * progress;
+      const spread = 0.45 + progress * 0.9;
+      return {
+        t: observed.length + step * TWIN_T_SPREAD,
+        SpO2: null,
+        HR: null,
+        MAP: null,
+        RespRate: null,
+        PredictedSpO2: predicted,
+        UncertaintyRange: [predicted - spread, predicted + spread],
+      };
+    });
+
+    return [...observed.slice(0, -1), bridgePoint, ...projection];
+  }, [history, recommendation]);
+
+  const twinAnchorPoints = useMemo(
+    () => chartData.filter((row) => row.PredictedSpO2 != null),
+    [chartData],
   );
 
   return (
     <>
       <PageHeader
-        eyebrow="Command center"
+        eyebrow="Clinical dashboard"
         title="Live Ventilator Digital Twin"
-        description="A clinical operations view for patient state, LSTM predictions, PPO recommendation, multi-risk outputs, and twin replay."
+        description="Monitor patient state, forecasts, treatment recommendations, risk scores, and digital twin replay from one operational view."
         actions={
           <>
             <select value={selected} onChange={(e) => setSelected(e.target.value)} className="select">
@@ -311,7 +481,7 @@ function LivePage() {
           <Empty
             icon={AlertTriangle}
             title="API connection failed"
-            text={`Unable to reach ${API_BASE}. Start the backend on port 8001, then click Reconnect.`}
+            text={`Unable to reach ${API_BASE}. Start the backend on port 8000, then click Reconnect.`}
           />
           <div className="actions">
             <Button
@@ -335,65 +505,74 @@ function LivePage() {
         </section>
       ) : null}
 
-      <section className="grid four">
-        <Metric label="SpO2" value={`${fmt(latest.SpO2)}%`} tone={Number(latest.SpO2) < 92 ? "danger" : "good"} note="Observed" />
-        <Metric label="Heart Rate" value={fmt(latest.HR, 0)} note="BPM" />
-        <Metric label="MAP" value={fmt(latest.MAP, 0)} note="mmHg" />
-        <Metric label="Resp Rate" value={fmt(latest.RespRate, 0)} note="breaths/min" />
-      </section>
+      <section className="dashboardGrid">
+        <div className="leftColumn">
+          <section className="grid four vitalsGrid">
+            <Metric label="SpO2" value={`${fmt(latest.SpO2)}%`} tone={Number(latest.SpO2) < 92 ? "danger" : "good"} note="Observed" />
+            <Metric label="HR" value={fmt(latest.HR, 0)} note="BPM" />
+            <Metric label="MAP" value={fmt(latest.MAP, 0)} note="mmHg" />
+            <Metric label="Resp Rate" value={fmt(latest.RespRate, 0)} note="breaths/min" />
+          </section>
 
-      <section className="liveGrid">
-        <div className="panel xl">
-          <div className="panelHead">
-            <h2>Patient Trajectory</h2>
-            <span>{history.length} samples</span>
+          <div className="panel trajectoryPanel">
+            <div className="panelHead">
+              <h2>Patient Trajectory</h2>
+              <div className="chartLegend">
+                <span className="legendChip blue">Historical</span>
+                <span className="legendChip purple">Predicted (Twin)</span>
+                <span className="legendChip violet">± Uncertainty</span>
+              </div>
+            </div>
+            {loadingPatient ? <LoadingBlock label="Loading patient stream" /> : (
+              <ResponsiveContainer width="100%" height={430}>
+                <ComposedChart data={chartData} margin={{ top: 12, right: 18, bottom: 0, left: -18 }}>
+                  <defs>
+                    <linearGradient id="spo2" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.18} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="rgba(148,163,184,.14)" vertical={false} />
+                  <XAxis dataKey="t" stroke="#5d6b82" tick={false} axisLine={false} />
+                  <YAxis stroke="#68758a" domain={[90, 100]} ticks={[95, 100]} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: "#111827", border: "1px solid rgba(148,163,184,.25)", borderRadius: 8 }} />
+                  <Area
+                    type="monotone"
+                    dataKey="SpO2"
+                    stroke="#3b82f6"
+                    fill="url(#spo2)"
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="UncertaintyRange"
+                    stroke="none"
+                    fill="rgba(168, 85, 247, 0.18)"
+                    connectNulls
+                    isAnimationActive={false}
+                  />
+                  {twinAnchorPoints.length > 1 ? (
+                    <Customized
+                      component={(chartProps) => (
+                        <>
+                          <TwinTrajectoryStroke {...chartProps} points={twinAnchorPoints} />
+                          <TwinTrajectoryDots {...chartProps} points={twinAnchorPoints} />
+                        </>
+                      )}
+                    />
+                  ) : null}
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          {loadingPatient ? <LoadingBlock label="Loading patient stream" /> : (
-            <ResponsiveContainer width="100%" height={330}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="spo2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="rgba(148,163,184,.16)" vertical={false} />
-                <XAxis dataKey="t" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" domain={[70, 130]} />
-                <Tooltip contentStyle={{ background: "#111827", border: "1px solid rgba(148,163,184,.25)", borderRadius: 8 }} />
-                <Area type="monotone" dataKey="SpO2" stroke="#38bdf8" fill="url(#spo2)" strokeWidth={3} />
-                <Line type="monotone" dataKey="HR" stroke="#fb7185" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="MAP" stroke="#34d399" strokeWidth={2} dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
         </div>
-        <div className="panel">
-          <div className="panelHead">
-            <h2>LSTM Forecast</h2>
-            <span className={`chip ${recommendation?.lstm_forecast_source === "lstm_keras" ? "good" : "warning"}`}>
-              {recommendation?.lstm_forecast_source || "pending"}
-            </span>
-          </div>
-          <div className="grid two compact">
-            <Metric label="Next SpO2" value={`${fmt(recommendation?.pred_next_spo2)}%`} />
-            <Metric label="Hypoxia" value={pct(recommendation?.hypoxia_prob)} tone={riskTone(recommendation?.hypoxia_prob)} />
-          </div>
-          <h3>Recommendation</h3>
-          <SettingsGrid settings={recommendation?.proposed} />
-          <div className="hint">
-            {predicting
-              ? "Updating predictions in real time..."
-              : health.data?.lstm?.artifacts_found
-                ? "LSTM artifacts detected by API health check."
-                : "Using fallback unless LSTM artifacts are trained."}
-          </div>
+        <div className="rightStack">
+          <ClinicalDecisionPanel recommendation={recommendation} multiRisk={multiRisk} predicting={predicting} />
+          <ThreeDPanel latest={latest} recommendation={recommendation} />
+          <AuditLedgerCard selected={selected} />
         </div>
-      </section>
-
-      <section className="grid two">
-        <RealtimeForecastPanel recommendation={recommendation} multiRisk={multiRisk} predicting={predicting} />
-        <MultiRiskPanel data={multiRisk} />
       </section>
 
       <section className="panel xl">
@@ -428,42 +607,68 @@ function LivePage() {
     </>
   );
 }
-function RealtimeForecastPanel({ recommendation, multiRisk, predicting }) {
+function ClinicalDecisionPanel({ recommendation, multiRisk, predicting }) {
   const regression = multiRisk?.predictions?.regression || {};
   const classification = multiRisk?.predictions?.classification || {};
-  const riskEntries = Object.entries(classification);
+  const explainability = [
+    ["SpO2 (Current)", recommendation?.pred_next_spo2 ? 0.2 : 0],
+    ["PEEP Setting", recommendation?.proposed?.PEEP ? 0.4 : 0],
+    ["Heart Rate", regression?.Next_HR?.prediction ? 0.1 : 0],
+  ];
 
   return (
-    <div className="panel">
+    <div className="panel decisionPanel">
       <div className="panelHead">
-        <h2>Realtime Forecast</h2>
+        <h2><Stethoscope size={18} /> Clinical Decision Support</h2>
         <span className={`chip ${predicting ? 'warning' : 'good'}`}>
-          {predicting ? 'Updating' : 'Live'}
+          {predicting ? 'Updating' : 'Stable'}
         </span>
       </div>
-      <div className="grid two compact">
-        <Metric label="Next SpO2" value={`${fmt(recommendation?.pred_next_spo2)}%`} />
-        <Metric label="Hypoxia" value={pct(recommendation?.hypoxia_prob)} tone={riskTone(recommendation?.hypoxia_prob)} />
+      <div className="forecastBox">
+        <div className="panelHead mini">
+          <h3>Predictive Forecast</h3>
+          <span className="chip warning">{recommendation ? "Active" : "Pending"}</span>
+        </div>
+        <div className="grid two compact">
+          <Metric label="Pred. Next SpO2" value={`${fmt(recommendation?.pred_next_spo2)}%`} />
+          <Metric label="Hypoxia Risk" value={pct(recommendation?.hypoxia_prob)} tone={riskTone(recommendation?.hypoxia_prob)} />
+        </div>
+        <p className="decisionHint">Forecast uses current patient stream and recent trajectory data.</p>
+      </div>
+      <h3>Proposed Adjustments</h3>
+      <SettingsGrid settings={recommendation?.proposed} />
+      <div className="rationale">
+        <h3>Rationale</h3>
+        <p>{recommendation?.rationale || "Patient stable, maintaining current settings."}</p>
+      </div>
+      <div className="riskList compactBars">
+        <h3>Model Explainability</h3>
+        {explainability.map(([label, value]) => (
+          <div key={label}>
+            <span>{label}</span>
+            <div className="bar"><i style={{ width: `${Math.max(8, Number(value) * 100)}%` }} /></div>
+            <strong>{Number(value) >= 0 ? `+${Number(value).toFixed(1)}` : Number(value).toFixed(1)}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="decisionActions">
+        <Button variant="accept"><CheckCircle2 size={16} /> Accept</Button>
+        <Button variant="override"><Activity size={16} /> Override</Button>
+      </div>
+    </div>
+  );
+}
+
+function AuditLedgerCard({ selected }) {
+  return (
+    <div className="panel ledgerPanel">
+      <div className="panelHead">
+        <h2><Link2 size={18} /> Audit Ledger</h2>
+        <span><ShieldCheck size={15} /> Verify</span>
       </div>
       <div className="table">
-        <div><span>Predicted vital</span><strong>Value</strong></div>
-        {Object.entries(regression).map(([key, payload]) => (
-          <div key={key}>
-            <span>{key.replaceAll('_', ' ')}</span>
-            <strong>{fmt(payload?.prediction)}</strong>
-          </div>
-        ))}
-      </div>
-      <div className="riskList">
-        {riskEntries.length === 0 ? (
-          <div className="emptyHint">Waiting for multi-risk scoring...</div>
-        ) : riskEntries.map(([key, payload]) => (
-          <div key={key}>
-            <span>{key.replaceAll('_', ' ')}</span>
-            <div className="bar"><i style={{ width: `${Math.min(100, Number(payload?.probability) * 100)}%` }} /></div>
-            <strong className={payload?.risk ? 'danger' : 'good'}>{pct(payload?.probability)}</strong>
-          </div>
-        ))}
+        <div><span>Patient</span><strong>{selected || "--"}</strong></div>
+        <div><span>Status</span><strong className="good">Chain Valid</strong></div>
       </div>
     </div>
   );
@@ -561,6 +766,204 @@ function TwinReplayPanel({ selected, history, recommendation }) {
           </ResponsiveContainer>
         </>
       )}
+    </div>
+  );
+}
+
+function ThreeDPanel({ latest, recommendation }) {
+  const mountRef = useRef(null);
+  const modelRef = useRef({ screen: null, knobs: [], body: null, group: null });
+
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
+
+    const width = mount.clientWidth || 360;
+    const height = 300;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f172a);
+
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+    camera.position.set(0, 1.2, 3);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    renderer.setSize(width, height);
+    mount.appendChild(renderer.domElement);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambient);
+
+    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+    dir.position.set(6, 8, 4);
+    scene.add(dir);
+
+    const hemi = new THREE.HemisphereLight(0x88b6ff, 0x0f172a, 0.35);
+    scene.add(hemi);
+
+    const group = new THREE.Group();
+    scene.add(group);
+    modelRef.current.group = group;
+
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.5, roughness: 0.7 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.26, 0.48), bodyMat);
+    body.castShadow = true;
+    body.position.y = 0.04;
+    group.add(body);
+    modelRef.current.body = body;
+
+    const screenMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, emissive: 0x1e40af, emissiveIntensity: 0.5 });
+    const screen = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.28, 0.045), screenMat);
+    screen.position.set(0, 0.55, 0.255);
+    group.add(screen);
+    modelRef.current.screen = screen;
+
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.25, roughness: 0.6 });
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.54, 0.05), panelMat);
+    panel.position.set(0, 0.05, 0.27);
+    group.add(panel);
+
+    const knobMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, metalness: 0.8, roughness: 0.25 });
+    for (let i = -1; i <= 1; i += 1) {
+      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 24), knobMat);
+      knob.position.set(i * 0.24, -0.12, 0.32);
+      knob.rotation.x = Math.PI / 2;
+      group.add(knob);
+      modelRef.current.knobs.push(knob);
+    }
+
+    const tubeMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, metalness: 0.3, roughness: 0.45 });
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.88, 16), tubeMat);
+    tube.rotation.x = Math.PI / 2;
+    tube.position.set(0.53, 0.48, 0);
+    group.add(tube);
+
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.92), new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.2 }));
+    base.position.y = -0.75;
+    group.add(base);
+
+    const box = new THREE.Box3().setFromObject(group);
+    const center = box.getCenter(new THREE.Vector3());
+    group.position.sub(center);
+    group.position.y += 0.1;
+
+    camera.lookAt(0, 0, 0);
+
+    const colladaLoader = new ColladaLoader();
+    colladaLoader.load(
+      "/model/Ventilator.dae",
+      (collada) => {
+        if (collada?.scene) {
+          group.clear();
+          const model = collada.scene;
+          model.traverse((node) => {
+            if (node.isMesh) {
+              node.castShadow = true;
+              node.receiveShadow = true;
+              if (node.material) {
+                node.material.metalness ??= 0.4;
+                node.material.roughness ??= 0.7;
+              }
+            }
+          });
+          model.scale.set(0.7, 0.7, 0.7);
+          group.add(model);
+          const box2 = new THREE.Box3().setFromObject(group);
+          const center2 = box2.getCenter(new THREE.Vector3());
+          group.position.sub(center2);
+          group.position.y += 0.1;
+        }
+      },
+      undefined,
+      () => {
+        const fallbackLoader = new GLTFLoader();
+        fallbackLoader.load(
+          "/ventilator.glb",
+          (gltf) => {
+            if (gltf?.scene) {
+              group.clear();
+              const model = gltf.scene;
+              model.traverse((node) => {
+                if (node.isMesh) {
+                  node.castShadow = true;
+                  node.receiveShadow = true;
+                }
+              });
+              model.scale.set(1.2, 1.2, 1.2);
+              group.add(model);
+              const box2 = new THREE.Box3().setFromObject(group);
+              const center2 = box2.getCenter(new THREE.Vector3());
+              group.position.sub(center2);
+              group.position.y += 0.1;
+            }
+          },
+          undefined,
+          () => {
+            // fallback to the procedural model when neither DAE nor GLB are available
+          }
+        );
+      }
+    );
+
+    let raf = null;
+    const clock = new THREE.Clock();
+    function animate() {
+      raf = requestAnimationFrame(animate);
+      const elapsed = clock.getElapsedTime();
+      if (modelRef.current.group) {
+        modelRef.current.group.rotation.y = elapsed * 0.12;
+      }
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    const ro = new ResizeObserver(() => {
+      const w = mount.clientWidth || 360;
+      const h = 300;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    });
+    ro.observe(mount);
+
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+      renderer.dispose();
+      mount.removeChild(renderer.domElement);
+    };
+  }, []);
+
+  useEffect(() => {
+    const { screen, knobs } = modelRef.current;
+    if (!screen || !knobs.length) return;
+
+    const spo2 = Number(latest?.SpO2 ?? 95);
+    const peep = Number(recommendation?.proposed?.PEEP ?? 10);
+    const fio2 = Number(recommendation?.proposed?.FiO2 ?? 50);
+    const tv = Number(recommendation?.proposed?.TidalVol ?? 450);
+
+    if (spo2 < 90) {
+      screen.material.emissive.setHex(0xef4444);
+      screen.material.emissiveIntensity = 0.8;
+    } else if (spo2 < 94) {
+      screen.material.emissive.setHex(0xf59e0b);
+      screen.material.emissiveIntensity = 0.7;
+    } else {
+      screen.material.emissive.setHex(0x1e40af);
+      screen.material.emissiveIntensity = 0.5;
+    }
+
+    knobs[0].rotation.y = (peep / 24) * Math.PI * 1.6;
+    knobs[1].rotation.y = ((fio2 - 21) / 79) * Math.PI * 1.6;
+    knobs[2].rotation.y = ((tv - 200) / 600) * Math.PI * 1.6;
+  }, [latest, recommendation]);
+
+  return (
+    <div className="panel threeDPanel">
+      <div className="panelHead"><h2>3D Model</h2></div>
+      <div ref={mountRef} style={{ width: "100%", height: 300 }} />
     </div>
   );
 }

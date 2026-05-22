@@ -30,17 +30,20 @@ services:
 
   # ──────────────────── FLASK RELAY SERVER ────────────────────
   relay:
-    build:
-      context: .
-      dockerfile: Dockerfile.relay
+    image: python:3.11-slim
     container_name: ventilator-relay
+    working_dir: /app
+    command: sh -c "pip install -q flask flask-cors requests && python relay.py"
     ports:
       - "5050:5050"
     environment:
       - DIGITAL_TWIN_API=http://host.docker.internal:8000
-      - DEMO_MODE=True
+      - FIWARE_ORION=http://orion:1026
+      - FIWARE_ENABLED=true
+      - DEMO_MODE=true
+      - DEFAULT_PATIENT_ID=800000
     volumes:
-      - ./Fiware/backend:/app
+      - ./Fiware/backend/relay.py:/app/relay.py:ro
     depends_on:
       - orion
 

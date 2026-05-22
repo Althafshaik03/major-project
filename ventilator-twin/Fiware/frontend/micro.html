@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CORE BREATHING // Ventilator Micro View</title>
+  <link rel="stylesheet" href="fiware-theme.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    body.twinFull #scene { inset: 42px 220px 34px 220px; }
+    .sidePanel {
+      position: absolute; top: 54px; width: 200px; z-index: 11;
+      padding: 12px; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 7px; box-shadow: var(--shadow);
+    }
+    .sidePanel.left { left: 12px; }
+    .sidePanel.right { right: 12px; }
+    .matrix {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px;
+      margin-top: 8px;
+    }
+    .matrix i {
+      display: block; aspect-ratio: 1; border: 1px solid var(--line);
+      background: #fff; font-style: normal; font-size: 8px;
+      display: grid; place-items: center;
+    }
+    .matrix i.on { background: #0984f8; color: #fff; }
+    .blueprintBox {
+      height: 100px; border: 1px solid var(--line); border-radius: 4px;
+      background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+      margin-top: 8px;
+    }
+    .footerNote {
+      position: absolute; bottom: 8px; left: 16px; font-size: 10px; color: var(--muted); z-index: 12;
+    }
+  </style>
+</head>
+<body class="twinFull">
+  <header class="topbar">
+    <div class="title">VENTILATOR <strong>// CORE BREATHING VIEW</strong></div>
+    <nav class="navLinks">
+      <a href="hub.html">Hub</a>
+      <a href="index.html">Macro</a>
+      <a href="micro.html" class="active">Micro</a>
+      <a href="sandbox.html">Sandbox</a>
+      <a href="intelligence.html">Intelligence</a>
+    </nav>
+    <span id="statusPill" class="statusPill warn"><span class="dot"></span> SYNCING</span>
+    <div id="clock" class="clock"></div>
+  </header>
+
+  <div id="scene"></div>
+
+  <aside class="sidePanel left">
+    <h3 style="font-size:11px;color:var(--blue);">BREATH PHASE MATRIX</h3>
+    <div class="matrix" id="matrix"></div>
+    <h3 style="font-size:11px;color:var(--blue);margin-top:12px;">WOVEN SURFACE (SpO₂ MAP)</h3>
+    <div class="blueprintBox" id="blueprint"></div>
+    <button class="modeBtn" style="width:100%;margin-top:10px;" onclick="location.href='intelligence.html'">AI INTELLIGENCE</button>
+  </aside>
+
+  <aside class="sidePanel right">
+    <h3 style="font-size:11px;color:var(--blue);">LIVE LOGIC STATE</h3>
+    <div class="row"><span>Phase</span><strong id="phase">INSP</strong></div>
+    <div class="row"><span>Pattern</span><strong>VC-AC</strong></div>
+    <div class="row"><span>Shuttle</span><strong id="shuttle">→ INSP</strong></div>
+    <div class="row"><span>Breath #</span><strong id="breathCount">0</strong></div>
+    <h3 style="font-size:11px;color:var(--blue);margin-top:12px;">TELEMETRY</h3>
+    <div class="row"><span>SpO₂</span><strong id="spo2">--</strong></div>
+    <div class="row"><span>PEEP</span><strong id="peep">--</strong></div>
+    <div class="row"><span>Pressure</span><strong id="pressure">--</strong></div>
+  </aside>
+
+  <div class="label3d" style="top:58px;left:50%;transform:translateX(-50%);">CIRCUIT TENSION (N)</div>
+  <div class="footerNote">DRAG: rotate · SCROLL: zoom · RELAY = localhost:5050/twin</div>
+
+  <script src="fiware-common.js"></script>
+  <script>
+    VentFiware.bindClock(document.getElementById("clock"));
+    const matrix = document.getElementById("matrix");
+    for (let i = 0; i < 24; i++) {
+      const cell = document.createElement("i");
+      cell.textContent = Math.random() > 0.45 ? "1" : "0";
+      if (cell.textContent === "1") cell.classList.add("on");
+      matrix.appendChild(cell);
+    }
+
+    const mount = document.getElementById("scene");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf8fbfd);
+    const camera = new THREE.PerspectiveCamera(55, mount.clientWidth / mount.clientHeight, 0.1, 100);
+    camera.position.set(0, 1.2, 4.5);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    mount.appendChild(renderer.domElement);
+
+    const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45 });
+    const group = new THREE.Group();
+    scene.add(group);
+
+    // Warp lines
+    for (let i = -8; i <= 8; i++) {
+      const line = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 3.2, 6), mat(0x94a3b8));
+      line.position.set(i * 0.18, 0, 0);
+      group.add(line);
+    }
+
+    // Weft tube along breath path
+    const points = [
+      new THREE.Vector3(-1.2, 0.1, 0.5),
+      new THREE.Vector3(-0.2, 0.2, 0),
+      new THREE.Vector3(0.3, -0.05, -0.4),
+      new THREE.Vector3(1.1, 0.15, -0.8),
+    ];
+    const curve = new THREE.CatmullRomCurve3(points);
+    const tubeGeo = new THREE.TubeGeometry(curve, 64, 0.045, 12, false);
+    const weft = new THREE.Mesh(tubeGeo, mat(0x0984f8));
+    group.add(weft);
+
+    const lungL = new THREE.Mesh(new THREE.SphereGeometry(0.35, 20, 16), mat(0x5eead4));
+    const lungR = lungL.clone();
+    lungL.position.set(-0.35, -0.35, -1.1);
+    lungR.position.set(0.35, -0.35, -1.1);
+    lungL.scale.set(0.7, 1.1, 0.35);
+    lungR.scale.set(0.7, 1.1, 0.35);
+    group.add(lungL, lungR);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    sun.position.set(3, 5, 4);
+    scene.add(sun);
+
+    let breath = 0;
+    let state = { spo2: 95, peep: 5, pressure: 15, resp_rate: 12 };
+
+    async function poll() {
+      try {
+        const t = await VentFiware.relay("/twin?patient_id=800000");
+        state = t;
+        document.getElementById("spo2").textContent = `${VentFiware.fmt(t.spo2)}%`;
+        document.getElementById("peep").textContent = VentFiware.fmt(t.peep);
+        document.getElementById("pressure").textContent = VentFiware.fmt(t.pressure);
+        const pill = document.getElementById("statusPill");
+        pill.className = t.fiware_online ? "statusPill live" : "statusPill warn";
+        pill.innerHTML = `<span class="dot"></span> ${t.fiware_online ? "LIVE FIWARE" : "DEMO TELEMETRY"}`;
+      } catch (_) {}
+    }
+    poll();
+    setInterval(poll, 500);
+
+    let dragging = false, lastX = 0;
+    renderer.domElement.addEventListener("mousedown", (e) => { dragging = true; lastX = e.clientX; });
+    window.addEventListener("mouseup", () => dragging = false);
+    window.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+      group.rotation.y += (e.clientX - lastX) * 0.006;
+      lastX = e.clientX;
+    });
+
+    const animate = () => {
+      requestAnimationFrame(animate);
+      const t = performance.now() / 1000;
+      const hz = (state.resp_rate || 12) / 60;
+      breath = (Math.sin(t * hz * Math.PI * 2) + 1) / 2;
+      const scale = 1 + breath * 0.2;
+      lungL.scale.set(0.7 * scale, 1.1 * scale, 0.35 * scale);
+      lungR.scale.set(0.7 * scale, 1.1 * scale, 0.35 * scale);
+      document.getElementById("phase").textContent = breath > 0.5 ? "INSP" : "EXP";
+      document.getElementById("shuttle").textContent = breath > 0.5 ? "→ INSP" : "← EXP";
+      document.getElementById("breathCount").textContent = Math.floor(t * hz * 60);
+      weft.material.color.setHex(state.spo2 < 90 ? 0xef4444 : 0x0984f8);
+      if (!dragging) group.rotation.y += 0.002;
+      camera.lookAt(0, 0, -0.2);
+      renderer.render(scene, camera);
+    };
+    animate();
+    window.addEventListener("resize", () => {
+      camera.aspect = mount.clientWidth / mount.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(mount.clientWidth, mount.clientHeight);
+    });
+  </script>
+</body>
+</html>

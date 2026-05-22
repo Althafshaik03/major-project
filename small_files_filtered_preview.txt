@@ -1,0 +1,200 @@
+﻿.claude/scheduled_tasks.lock
+.claude/settings.json
+.claude/settings.local.json
+.claude/skills/debug-issue.md
+.claude/skills/explore-codebase.md
+.claude/skills/refactor-safely.md
+.claude/skills/review-changes.md
+.cursor/mcp.json
+.gitattributes
+.github/workflows/twin-quality-gate.yml
+.gitignore
+.mcp.json
+.opencode.json
+api/main.py
+blockchain/contracts/AuditAnchor.sol
+blockchain/hardhat.config.js
+blockchain/package.json
+blockchain/scripts/deploy.js
+blockchain/test/AuditAnchor.test.js
+deploy/docker-compose.yml
+deploy/grafana/dashboards/ventilator-lstm.json
+deploy/grafana/provisioning/dashboards/default.yaml
+deploy/grafana/provisioning/datasources/default.yaml
+deploy/prometheus/prometheus.yml
+docs/1. Improving_Patient-Ventilator_Synchrony_During_Pressure_Support_Ventilation_Based_on_Reinforcement_Learning_Algorithm-2.pdf
+docs/architecture-decisions.md
+docs/AZURE_DEPLOYMENT.md
+docs/blockchain_ventilator_framework.md
+docs/build_project_report.py
+docs/debug-workflow.md
+docs/demo-runbook.md
+docs/dfd_uml.md
+docs/diagrams/dfd.md
+docs/diagrams/README.md
+docs/diagrams/system-architecture.md
+docs/diagrams/uml.md
+docs/event-schema.md
+docs/failure-recovery.md
+docs/final_report/Major-Project-Report-RishavKumar.md
+docs/final_report/Major-Project-Report-RishavKumar.tex
+docs/fiware_digital_twin.md
+docs/ieee_paper/main.tex
+docs/ieee_paper/README.md
+docs/Machine_Learning-Based_Digital_Twin_for_Predictive_Modeling_in_Wind_Turbines.pdf
+docs/model_comparison_lstm_vs_dqn.md
+docs/MULTI_RISK_IMPLEMENTATION_SUMMARY.md
+docs/multi_risk_integration_guide.md
+docs/phase 2 REPORT.pdf
+docs/phase2-summary.md
+docs/presentation/hindi_viva.md
+docs/presentation/PRESENTATION_DAY.md
+docs/presentation/short_viva.md
+docs/presentation/slides_notes.md
+docs/PRESENTATION_GUIDE.md
+docs/Project_Report.pdf
+docs/realtime_improvements_log.md
+docs/requirements.md
+docs/safety-constraints.md
+docs/twin-model-spec.md
+docs/viva_prep.md
+docs/VIVA_QUICK_REF.md
+frontend/app/index.html
+frontend/app/package.json
+frontend/app/package-lock.json
+frontend/app/src/api.js
+frontend/app/src/main.jsx
+frontend/app/src/styles.css
+frontend/dashboard/app.css
+frontend/dashboard/app.js
+frontend/dashboard/audit.html
+frontend/dashboard/index.html
+frontend/dashboard/models.html
+frontend/dashboard/tests.html
+frontend/dashboard/ventilator.glb
+frontend/dashboard/ventilator.gltf
+IMPLEMENTATION_LOG.md
+JD(1).docx
+Literature_Survey_Updated.docx.pdf
+Major Project/.gitattributes
+Major Project/.github/workflows/twin-quality-gate.yml
+Major Project/.gitignore
+Major Project/api/main.py
+Major Project/blockchain/contracts/AuditAnchor.sol
+Major Project/blockchain/hardhat.config.js
+Major Project/blockchain/package.json
+Major Project/blockchain/scripts/deploy.js
+Major Project/blockchain/test/AuditAnchor.test.js
+Major Project/deploy/docker-compose.yml
+Major Project/deploy/grafana/dashboards/ventilator-lstm.json
+Major Project/deploy/grafana/provisioning/dashboards/default.yaml
+Major Project/deploy/grafana/provisioning/datasources/default.yaml
+Major Project/deploy/prometheus/prometheus.yml
+Major Project/docs/1. Improving_Patient-Ventilator_Synchrony_During_Pressure_Support_Ventilation_Based_on_Reinforcement_Learning_Algorithm-2.pdf
+Major Project/docs/architecture-decisions.md
+Major Project/docs/AZURE_DEPLOYMENT.md
+Major Project/docs/blockchain_ventilator_framework.md
+Major Project/docs/build_project_report.py
+Major Project/docs/debug-workflow.md
+Major Project/docs/demo-runbook.md
+Major Project/docs/dfd_uml.md
+Major Project/docs/diagrams/dfd.md
+Major Project/docs/diagrams/README.md
+Major Project/docs/diagrams/system-architecture.md
+Major Project/docs/diagrams/uml.md
+Major Project/docs/event-schema.md
+Major Project/docs/failure-recovery.md
+Major Project/docs/final_report/Major-Project-Report-RishavKumar.md
+Major Project/docs/final_report/Major-Project-Report-RishavKumar.tex
+Major Project/docs/ieee_paper/main.tex
+Major Project/docs/ieee_paper/README.md
+Major Project/docs/Machine_Learning-Based_Digital_Twin_for_Predictive_Modeling_in_Wind_Turbines.pdf
+Major Project/docs/model_comparison_lstm_vs_dqn.md
+Major Project/docs/MULTI_RISK_IMPLEMENTATION_SUMMARY.md
+Major Project/docs/multi_risk_integration_guide.md
+Major Project/docs/phase 2 REPORT.pdf
+Major Project/docs/phase2-summary.md
+Major Project/docs/presentation/hindi_viva.md
+Major Project/docs/presentation/PRESENTATION_DAY.md
+Major Project/docs/presentation/short_viva.md
+Major Project/docs/presentation/slides_notes.md
+Major Project/docs/PRESENTATION_GUIDE.md
+Major Project/docs/Project_Report.pdf
+Major Project/docs/realtime_improvements_log.md
+Major Project/docs/requirements.md
+Major Project/docs/safety-constraints.md
+Major Project/docs/twin-model-spec.md
+Major Project/docs/viva_prep.md
+Major Project/docs/VIVA_QUICK_REF.md
+Major Project/frontend/dashboard/index.html
+Major Project/Literature_Survey_Updated.docx.pdf
+Major Project/MULTI_RISK_QUICK_REFERENCE.md
+Major Project/pipelines/evaluate_digital_twin.py
+Major Project/pipelines/feature_engineering.py
+Major Project/pipelines/historical_replay_benchmark.py
+Major Project/pipelines/lstm_feature_enrichment.py
+Major Project/pipelines/multi_risk_features.py
+Major Project/pipelines/ppo_feature_engineering.py
+Major Project/pipelines/run_phase1.py
+Major Project/pipelines/simulated_ingestion.py
+Major Project/pipelines/ventilator_feature_engineering.py
+Major Project/README.md
+Major Project/README_MULTI_RISK.md
+Major Project/reports/ablation-study.md
+Major Project/reports/benchmark-results.md
+Major Project/reports/model_evaluation_lstm.json
+Major Project/reports/model_evaluation_multi_risk.json
+Major Project/reports/model_evaluation_multi_risk.md
+Major Project/reports/model-evaluation-lstm.md
+Major Project/reports/model-evaluation-ppo.md
+Major Project/reports/model-evaluation-twin.md
+Major Project/reports/twin_historical_replay.json
+Major Project/requirements.txt
+Major Project/RUNNING.md
+Major Project/scripts/generate_evaluation_report.py
+Major Project/services/audit_bridge.py
+Major Project/services/chain_anchor.py
+Major Project/services/data_simulator.py
+Major Project/services/digital_twin.py
+Major Project/services/lstm_inference.py
+Major Project/services/multi_risk_inference.py
+Major Project/services/ppo_policy.py
+Major Project/services/prometheus_metrics.py
+Major Project/tests/test_chain_anchor.py
+Major Project/tests/test_digital_twin_replay.py
+Major Project/tests/test_digital_twin_safety.py
+Major Project/tests/test_multi_risk.py
+Major Project/tests/test_ppo_training_smoke.py
+Major Project/tests/test_simulator_api.py
+ml/lstm_training.py
+ml/multi_risk/risk_thresholds.json
+ml/multi_risk_training.py
+ml/ppo_training.py
+MULTI_RISK_QUICK_REFERENCE.md
+pipelines/evaluate_digital_twin.py
+pipelines/feature_engineering.py
+pipelines/historical_replay_benchmark.py
+pipelines/lstm_feature_enrichment.py
+pipelines/multi_risk_features.py
+pipelines/ppo_feature_engineering.py
+pipelines/run_phase1.py
+pipelines/simulated_ingestion.py
+pipelines/ventilator_feature_engineering.py
+README.md
+README_MULTI_RISK.md
+reports/ablation-study.md
+reports/benchmark-results.md
+reports/model_evaluation_lstm.json
+reports/model_evaluation_multi_risk.json
+reports/model_evaluation_multi_risk.md
+reports/model-evaluation-lstm.md
+reports/model-evaluation-ppo.md
+reports/model-evaluation-twin.md
+reports/twin_historical_replay.json
+requirements.txt
+RUNNING.md
+scripts/generate_evaluation_report.py
+scripts/generate_ventilator_glb.py
+services/audit_bridge.py
+services/chain_anchor.py
+services/data_simulator.py

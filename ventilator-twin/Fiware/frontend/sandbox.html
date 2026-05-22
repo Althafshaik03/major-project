@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SANDBOX // Ventilator Control Panel</title>
+  <link rel="stylesheet" href="fiware-theme.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/ColladaLoader.js"></script>
+  <style>
+    body { overflow: hidden; height: 100vh; display: grid; grid-template-rows: 42px 1fr 118px; }
+    .sandboxGrid { display: grid; grid-template-columns: 280px 1fr 300px; height: 100%; overflow: hidden; }
+    .sidePanel { padding: 12px; overflow-y: auto; border-right: 1px solid var(--line); background: var(--panel); }
+    .sidePanel.right { border-right: 0; border-left: 1px solid var(--line); }
+    #canvas { width: 100%; height: 100%; background: linear-gradient(180deg, #f8fbfd, #e8f0f4); }
+    .sliderGroup { margin-bottom: 14px; }
+    .sliderGroup label { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: var(--blue); margin-bottom: 6px; }
+    .sliderGroup input[type=range] { width: 100%; }
+    .gaugeRow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+    .gauge {
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      width: 72px; height: 72px;
+      display: grid; place-items: center;
+      font-size: 11px; font-weight: 800;
+      margin: 0 auto;
+    }
+    .gauge.blue { color: var(--blue); border-color: #93c5fd; }
+    .gauge.red { color: var(--red); border-color: #fecdd3; }
+    .optGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .qualityGrade { font-size: 42px; text-align: center; color: var(--green); font-weight: 800; margin: 8px 0; }
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--line); background: #fff; }
+    .presets button { font-size: 10px; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">SANDBOX <strong>// CONTROL PANEL</strong></div>
+    <nav class="navLinks">
+      <a href="hub.html">Hub</a>
+      <a href="index.html">Macro</a>
+      <a href="micro.html">Micro</a>
+      <a href="sandbox.html" class="active">Sandbox</a>
+      <a href="intelligence.html">Intelligence</a>
+    </nav>
+    <span id="statusPill" class="statusPill warn"><span class="dot"></span> SANDBOX MODE</span>
+    <div id="clock" class="clock"></div>
+  </header>
+
+  <div class="sandboxGrid">
+    <aside class="sidePanel">
+      <h3 style="color:var(--blue);font-size:11px;">VENTILATOR CONTROLS</h3>
+      <div class="sliderGroup">
+        <label><span>PEEP (cmH₂O)</span><strong id="peepLbl">5</strong></label>
+        <input type="range" id="peep" min="3" max="20" step="0.5" value="5" />
+      </div>
+      <div class="sliderGroup">
+        <label><span>FiO₂ (%)</span><strong id="fio2Lbl">40</strong></label>
+        <input type="range" id="fio2" min="21" max="100" step="1" value="40" />
+      </div>
+      <div class="sliderGroup">
+        <label><span>TIDAL VOLUME (mL)</span><strong id="tvLbl">450</strong></label>
+        <input type="range" id="tv" min="200" max="800" step="10" value="450" />
+      </div>
+      <div class="sliderGroup">
+        <label><span>RESP RATE</span><strong id="rrLbl">12</strong></label>
+        <input type="range" id="rr" min="8" max="35" step="1" value="12" />
+      </div>
+      <div class="optGrid" style="margin-top:12px;">
+        <button class="modeBtn primary" data-opt="safety">Safety</button>
+        <button class="modeBtn" data-opt="o2">O₂ First</button>
+        <button class="modeBtn" data-opt="vent">Vent First</button>
+        <button class="modeBtn" data-opt="balanced">Balanced</button>
+      </div>
+      <button class="modeBtn primary" id="simulateBtn" style="width:100%;margin-top:14px;">RUN TWIN SIMULATION</button>
+      <button class="modeBtn" id="applyBtn" style="width:100%;margin-top:8px;">APPLY TO FIWARE ENTITY</button>
+    </aside>
+
+    <main><div id="canvas"></div></main>
+
+    <aside class="sidePanel right">
+      <h3 style="color:var(--blue);font-size:11px;">ML PREDICTION (VENTILATOR)</h3>
+      <div class="qualityGrade" id="grade">B+</div>
+      <div class="gaugeRow">
+        <div class="gauge blue"><span id="defectGauge">7%</span><small>Hypoxia</small></div>
+        <div class="gauge red"><span id="anomGauge">0.5</span><small>Anomaly</small></div>
+        <div class="gauge blue"><span id="effGauge">92%</span><small>Efficiency</small></div>
+      </div>
+      <div class="row"><span>Mean SpO₂ (twin)</span><strong id="meanSpo2">--</strong></div>
+      <div class="row"><span>Δ SpO₂</span><strong id="deltaSpo2">--</strong></div>
+      <div class="row"><span>Uncertainty</span><strong id="uncertainty">--</strong></div>
+      <h3 style="color:var(--blue);font-size:11px;margin-top:16px;">TERMINAL</h3>
+      <div class="terminal" id="terminal"></div>
+    </aside>
+  </div>
+
+  <div class="presets">
+    <button class="modeBtn" data-preset="stable">Stable ICU</button>
+    <button class="modeBtn" data-preset="hypoxia">Hypoxia Sim</button>
+    <button class="modeBtn" data-preset="highpeep">High PEEP</button>
+    <button class="modeBtn" data-preset="vili">VILI Risk TV</button>
+    <button class="modeBtn" data-preset="wean">Weaning</button>
+  </div>
+
+  <script src="fiware-common.js"></script>
+  <script>
+    const { fmt, relay, bindClock, renderEventLog } = VentFiware;
+    bindClock(document.getElementById("clock"));
+
+    const sliders = ["peep", "fio2", "tv", "rr"];
+    const getParams = () => ({
+      peep: Number(document.getElementById("peep").value),
+      fio2: Number(document.getElementById("fio2").value),
+      tidal_vol: Number(document.getElementById("tv").value),
+      resp_rate: Number(document.getElementById("rr").value),
+      proposed: {
+        PEEP: Number(document.getElementById("peep").value),
+        FiO2: Number(document.getElementById("fio2").value),
+        TidalVol: Number(document.getElementById("tv").value),
+      },
+    });
+
+    sliders.forEach((id) => {
+      const el = document.getElementById(id);
+      el.addEventListener("input", () => {
+        document.getElementById(`${id}Lbl`).textContent = el.value;
+      });
+    });
+
+    document.querySelectorAll("[data-opt]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const m = btn.dataset.opt;
+        if (m === "safety") { peep.value = 5; fio2.value = 35; tv.value = 400; }
+        if (m === "o2") { peep.value = 10; fio2.value = 60; tv.value = 450; }
+        if (m === "vent") { peep.value = 6; fio2.value = 40; tv.value = 550; }
+        if (m === "balanced") { peep.value = 8; fio2.value = 45; tv.value = 480; }
+        sliders.forEach((id) => document.getElementById(`${id}Lbl`).textContent = document.getElementById(id).value);
+      });
+    });
+
+    document.querySelectorAll("[data-preset]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const p = btn.dataset.preset;
+        const map = {
+          stable: [5, 40, 450, 12],
+          hypoxia: [12, 80, 420, 18],
+          highpeep: [16, 55, 400, 14],
+          vili: [8, 50, 720, 16],
+          wean: [5, 30, 380, 10],
+        };
+        const [a, b, c, d] = map[p] || map.stable;
+        peep.value = a; fio2.value = b; tv.value = c; rr.value = d;
+        sliders.forEach((id) => document.getElementById(`${id}Lbl`).textContent = document.getElementById(id).value);
+      });
+    });
+
+    document.getElementById("simulateBtn").addEventListener("click", async () => {
+      const body = { ...getParams(), steps: 8, noise_scale: 0 };
+      const data = await relay("/sandbox/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const r = data.result || {};
+      document.getElementById("meanSpo2").textContent = fmt(r.mean_spo2);
+      document.getElementById("deltaSpo2").textContent = fmt(r.delta_spo2);
+      document.getElementById("uncertainty").textContent = `±${fmt(r.uncertainty)}`;
+      document.getElementById("defectGauge").textContent = `${fmt((r.risk_flag ? 18 : 7), 0)}%`;
+      document.getElementById("grade").textContent = r.risk_flag ? "C" : "B+";
+    });
+
+    document.getElementById("applyBtn").addEventListener("click", async () => {
+      await relay("/twin/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(getParams()),
+      });
+      const ev = await relay("/events");
+      renderEventLog(document.getElementById("terminal"), ev.events);
+    });
+
+    async function poll() {
+      try {
+        const h = await VentFiware.checkHealth();
+        const pill = document.getElementById("statusPill");
+        pill.className = h.fiware ? "statusPill live" : "statusPill warn";
+        pill.innerHTML = `<span class="dot"></span> ${h.fiware ? "LIVE FIWARE" : "SANDBOX · ORION OFFLINE"}`;
+        const ev = await relay("/events");
+        renderEventLog(document.getElementById("terminal"), ev.events);
+      } catch (_) {}
+    }
+    poll();
+    setInterval(poll, 2000);
+
+    // Minimal 3D preview
+    const mount = document.getElementById("canvas");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf4f8fb);
+    const camera = new THREE.PerspectiveCamera(50, mount.clientWidth / mount.clientHeight, 0.1, 100);
+    camera.position.set(4, 3, 5);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    mount.appendChild(renderer.domElement);
+    const root = new THREE.Group();
+    scene.add(root);
+    const grid = new THREE.GridHelper(12, 20, 0x94a3b8, 0xe2e8f0);
+    grid.position.y = -1;
+    scene.add(grid);
+    if (THREE.ColladaLoader) {
+      new THREE.ColladaLoader().load("assets/medical-ventilator/model/Ventilator.dae", (c) => {
+        if (c?.scene) {
+          root.add(c.scene);
+          c.scene.scale.setScalar(0.02);
+        }
+      });
+    }
+    const animate = () => {
+      requestAnimationFrame(animate);
+      root.rotation.y += 0.004;
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+    };
+    animate();
+  </script>
+</body>
+</html>

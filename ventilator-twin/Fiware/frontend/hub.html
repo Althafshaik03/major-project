@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ventilator OS // FIWARE Digital Twin Hub</title>
+  <link rel="stylesheet" href="fiware-theme.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">VENTILATOR <strong>// FIWARE DIGITAL TWIN</strong></div>
+    <div id="statusPill" class="statusPill warn"><span class="dot"></span> CHECKING RELAY</div>
+    <div id="clock" class="clock"></div>
+  </header>
+
+  <main class="hubMain">
+    <section class="hubHero panel">
+      <h1>Industry 4.0 Ventilator Digital Twin</h1>
+      <p>
+        Same architecture as the Handloom Weaving twin: <strong>IoT telemetry → FIWARE Orion (NGSI-v2) → Flask relay → Three.js dashboards</strong>,
+        adapted for mechanical ventilation, LSTM forecasting, PPO recommendations, physics twin replay, and blockchain audit.
+      </p>
+      <div class="hubArch">
+        <div class="archStep">ICU / Simulator CSV</div>
+        <div class="archArrow">→</div>
+        <div class="archStep">FastAPI (:8000)</div>
+        <div class="archArrow">→</div>
+        <div class="archStep">Flask Relay (:5050)</div>
+        <div class="archArrow">→</div>
+        <div class="archStep">Orion + MongoDB (:1026)</div>
+        <div class="archArrow">→</div>
+        <div class="archStep">3D HUD Dashboards</div>
+      </div>
+    </section>
+
+    <section class="hubGrid">
+      <a class="hubCard panel" href="index.html">
+        <h2>Macro Twin</h2>
+        <p>Full ventilator 3D model, live FIWARE telemetry rails, defect-rate gauge, event log — like Handloom macro view.</p>
+        <span class="hubTag">index.html</span>
+      </a>
+      <a class="hubCard panel" href="micro.html">
+        <h2>Micro Breathing View</h2>
+        <p>Catmull-Rom circuit tubing + lung compliance animation driven by live SpO₂ / respiratory rate.</p>
+        <span class="hubTag">micro.html</span>
+      </a>
+      <a class="hubCard panel" href="sandbox.html">
+        <h2>Sandbox Control Panel</h2>
+        <p>What-if simulation: adjust PEEP, FiO₂, tidal volume before applying to the twin — shadow mode for clinicians.</p>
+        <span class="hubTag">sandbox.html</span>
+      </a>
+      <a class="hubCard panel" href="intelligence.html">
+        <h2>LSTM + PPO Intelligence</h2>
+        <p>Prediction & optimization dashboard: hypoxia risk, defect-rate regressor analogue, twin replay API calls.</p>
+        <span class="hubTag">intelligence.html</span>
+      </a>
+    </section>
+
+    <section class="panel hubRun">
+      <h2>Run stack</h2>
+      <pre>cd "Major Project"
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+
+cd ventilator-twin
+docker compose up -d
+
+cd Fiware/backend
+pip install flask flask-cors requests
+python relay.py
+
+cd Fiware/frontend
+python -m http.server 8080
+# Open http://127.0.0.1:8080/hub.html</pre>
+    </section>
+  </main>
+  <script src="fiware-common.js"></script>
+  <script>
+    VentFiware.bindClock(document.getElementById("clock"));
+    VentFiware.checkHealth().then((s) => {
+      const pill = document.getElementById("statusPill");
+      if (s.relay && s.fiware) {
+        pill.className = "statusPill live";
+        pill.innerHTML = '<span class="dot"></span> LIVE FIWARE DATA';
+      } else if (s.relay) {
+        pill.className = "statusPill warn";
+        pill.innerHTML = '<span class="dot"></span> RELAY OK · ORION OFFLINE';
+      } else {
+        pill.className = "statusPill warn";
+        pill.innerHTML = '<span class="dot"></span> DEMO MODE';
+      }
+    });
+  </script>
+</body>
+</html>

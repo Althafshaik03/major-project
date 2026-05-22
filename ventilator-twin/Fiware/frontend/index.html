@@ -1,720 +1,857 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ventilator Digital Twin - Dashboard</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ventilator OS // Digital Twin</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/ColladaLoader.js"></script>
+  <style>
+    :root {
+      --bg: #f7f9fb;
+      --ink: #273142;
+      --muted: #7c8797;
+      --line: #dce5ef;
+      --blue: #0984f8;
+      --cyan: #12d5ee;
+      --green: #1fb66a;
+      --amber: #ffb020;
+      --red: #ef3b4f;
+      --panel: rgba(255,255,255,.88);
+      --shadow: 0 14px 36px rgba(38, 55, 77, .13);
+      font-family: "Courier New", ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #f8fafc;
-            overflow: hidden;
-        }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      color: var(--ink);
+      background: linear-gradient(180deg, #ffffff 0%, #eef4f8 100%);
+      letter-spacing: .08em;
+    }
 
-        #canvas {
-            display: block;
-            width: 100%;
-            height: 100vh;
-        }
+    button, select, input { font: inherit; }
+    .topbar {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.9);
+      backdrop-filter: blur(12px);
+      position: relative;
+      z-index: 20;
+    }
+    .title { font-weight: 800; font-size: 13px; }
+    .title strong { color: var(--blue); }
+    .statusPill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid #bdebd4;
+      background: #eafff4;
+      color: var(--green);
+      padding: 5px 12px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 12px currentColor;
+    }
+    .clock { color: var(--muted); font-size: 11px; }
 
-        /* ──── HUD OVERLAY ──── */
-        .hud-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
+    #scene {
+      position: absolute;
+      inset: 42px 0 34px;
+      background: linear-gradient(180deg, #f8fbfd 0%, #e8f0f4 100%);
+    }
 
-        .hud-panel {
-            position: absolute;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 12px;
-            padding: 16px;
-            font-size: 12px;
-            font-family: 'Courier New', monospace;
-            pointer-events: auto;
-        }
+    .panel {
+      position: absolute;
+      z-index: 10;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 7px;
+      backdrop-filter: blur(8px);
+      overflow: hidden;
+    }
+    .panel::before, .panel::after {
+      content: "";
+      position: absolute;
+      width: 13px;
+      height: 13px;
+      border-color: var(--blue);
+      opacity: .9;
+    }
+    .panel::before {
+      top: -1px;
+      left: -1px;
+      border-top: 2px solid;
+      border-left: 2px solid;
+      border-radius: 6px 0 0 0;
+    }
+    .panel::after {
+      right: -1px;
+      bottom: -1px;
+      border-right: 2px solid;
+      border-bottom: 2px solid;
+      border-radius: 0 0 6px 0;
+    }
+    .panelHead {
+      padding: 13px 14px 8px;
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(220,229,239,.7);
+    }
+    .panelBody { padding: 12px 14px; }
 
-        /* Top-Left: Patient Info */
-        #infoPanel {
-            top: 20px;
-            left: 20px;
-            width: 320px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
+    .leftRail { left: 14px; top: 58px; width: 176px; display: grid; gap: 10px; position: absolute; z-index: 11; }
+    .rightRail { right: 14px; top: 58px; width: 176px; display: grid; gap: 10px; position: absolute; z-index: 11; }
+    .metricCard {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      box-shadow: var(--shadow);
+      padding: 12px;
+      min-height: 116px;
+      position: relative;
+    }
+    .metricCard h3 {
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .metricBig { font-size: 35px; text-align: center; color: var(--blue); font-weight: 500; letter-spacing: .02em; }
+    .metricUnit { text-align: center; color: var(--muted); font-size: 10px; margin-top: 2px; }
+    .bar {
+      height: 5px;
+      border-radius: 999px;
+      background: #ecf1f5;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--cyan)); }
+    .bar.green i { background: linear-gradient(90deg, var(--green), #8be7b7); }
+    .bar.amber i { background: linear-gradient(90deg, var(--amber), #ffd58a); }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      color: var(--muted);
+      margin: 9px 0;
+    }
+    .row strong { color: var(--ink); letter-spacing: .03em; }
 
-        .hud-title {
-            color: #60a5fa;
-            font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .modeBtn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 31px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      background: #f4f7fa;
+      color: var(--ink);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      box-shadow: 0 6px 14px rgba(38,55,77,.07);
+    }
+    .modeBtn.primary { background: var(--blue); border-color: var(--blue); color: white; }
+    .modeBtn.dark { background: #232a34; border-color: #232a34; color: white; }
+    .modeBtn.danger { background: var(--red); border-color: var(--red); color: white; }
 
-        .hud-status-light {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
+    .centerControls {
+      position: absolute;
+      top: 54px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 12;
+    }
 
-        .status-stable { background: #10b981; }
-        .status-warning { background: #f59e0b; }
-        .status-critical { background: #ef4444; }
+    .blueprint {
+      top: 58px;
+      left: 226px;
+      width: 168px;
+    }
+    .patternThumb {
+      height: 172px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background:
+        repeating-linear-gradient(90deg, rgba(13,148,136,.25) 0 4px, rgba(245,158,11,.2) 4px 8px),
+        repeating-linear-gradient(0deg, rgba(59,130,246,.25) 0 5px, transparent 5px 10px),
+        #e9f4f2;
+    }
+    .patternPredictor {
+      top: 58px;
+      right: 246px;
+      width: 214px;
+    }
+    .settingRows {
+      margin-top: 10px;
+      background: rgba(248,250,252,.9);
+      border-radius: 4px;
+      padding: 8px;
+    }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+    .bottomCharts {
+      position: absolute;
+      left: 218px;
+      right: 210px;
+      bottom: 42px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      z-index: 10;
+    }
+    .chartCard {
+      height: 88px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 8px;
+      box-shadow: 0 8px 20px rgba(38,55,77,.08);
+    }
+    .chartCard h4 {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+    canvas.spark { width: 100%; height: 52px; display: block; }
 
-        .param-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px;
-            margin: 4px 0;
-            background: rgba(51, 65, 85, 0.3);
-            border-radius: 6px;
-            border-left: 3px solid #60a5fa;
-        }
+    .terminal {
+      height: 172px;
+      overflow: hidden;
+      background: #f2f5f7;
+      color: #4b5565;
+      font-size: 10px;
+      line-height: 1.55;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+    .terminal .ok { color: var(--green); font-weight: 800; }
+    .terminal .bad { color: var(--red); font-weight: 800; }
 
-        .param-label {
-            color: #94a3b8;
-            font-weight: 600;
-        }
+    .label3d {
+      position: absolute;
+      z-index: 9;
+      background: rgba(255,255,255,.88);
+      border: 1px solid #9ad7ff;
+      color: var(--blue);
+      padding: 5px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 800;
+      box-shadow: 0 6px 18px rgba(38,55,77,.15);
+      pointer-events: none;
+    }
 
-        .param-value {
-            color: #60a5fa;
-            font-weight: bold;
-            font-family: 'Courier New', monospace;
-        }
+    .footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 34px;
+      border-top: 1px solid var(--line);
+      background: rgba(255,255,255,.86);
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      padding: 0 16px;
+      color: #657084;
+      font-size: 11px;
+      z-index: 20;
+    }
+    .relayBanner {
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      padding: 9px 22px;
+      border: 1px solid #ffc857;
+      background: rgba(255, 248, 225, .92);
+      color: #d59500;
+      border-radius: 5px;
+      font-size: 11px;
+      display: none;
+    }
+    .relayBanner.show { display: block; }
 
-        /* Top-Right: Controls */
-        #controlPanel {
-            top: 20px;
-            right: 20px;
-            width: 280px;
-        }
-
-        .control-btn {
-            display: inline-block;
-            padding: 8px 16px;
-            margin: 4px;
-            background: #1e40af;
-            border: 1px solid #3b82f6;
-            color: #e0f2fe;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 600;
-            transition: all 0.3s;
-            pointer-events: auto;
-        }
-
-        .control-btn:hover {
-            background: #1e3a8a;
-            border-color: #60a5fa;
-            box-shadow: 0 0 10px rgba(96, 165, 250, 0.3);
-        }
-
-        .control-btn.active {
-            background: #10b981;
-            border-color: #34d399;
-        }
-
-        /* Bottom-Left: Charts */
-        #chartPanel {
-            bottom: 20px;
-            left: 20px;
-            width: 400px;
-            height: 200px;
-        }
-
-        .chart-container {
-            position: relative;
-            width: 100%;
-            height: 160px;
-        }
-
-        /* Bottom-Right: Alerts */
-        #alertPanel {
-            bottom: 20px;
-            right: 20px;
-            width: 350px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .alert-item {
-            padding: 10px;
-            margin: 8px 0;
-            border-left: 4px solid;
-            border-radius: 4px;
-            font-size: 11px;
-            background: rgba(51, 65, 85, 0.4);
-        }
-
-        .alert-info {
-            border-color: #3b82f6;
-            color: #93c5fd;
-        }
-
-        .alert-warning {
-            border-color: #f59e0b;
-            color: #fcd34d;
-        }
-
-        .alert-critical {
-            border-color: #ef4444;
-            color: #fca5a5;
-        }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: rgba(51, 65, 85, 0.2);
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #64748b;
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
-        }
-
-        /* 3D View instructions */
-        .instructions {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.7);
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 11px;
-            color: #94a3b8;
-        }
-    </style>
+    .alertOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(14, 18, 25, .88);
+      z-index: 99;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .alertOverlay.show { display: flex; }
+    .alertBox {
+      width: min(760px, 90vw);
+      background: #171b20;
+      color: #e7ecf0;
+      border: 1px solid #343b45;
+      box-shadow: 0 20px 70px rgba(0,0,0,.4);
+    }
+    .alertBox h2 {
+      margin: 0;
+      padding: 32px 38px;
+      text-align: center;
+      background: #cf002e;
+      color: white;
+      font-size: 28px;
+      letter-spacing: .04em;
+    }
+    .alertContent { padding: 38px; letter-spacing: 0; font-family: Inter, Arial, sans-serif; }
+    .alertContent h3 { color: #ff2c5d; font-size: 23px; }
+    .alertMeta {
+      margin: 24px 0;
+      padding: 20px;
+      background: #570006;
+      border-left: 5px solid #ff1648;
+      font-family: "Courier New", monospace;
+      line-height: 1.8;
+    }
+    .alertClose {
+      margin-top: 18px;
+      height: 38px;
+      border: 1px solid #ff456d;
+      background: #cf002e;
+      color: white;
+      padding: 0 18px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-    <!-- 3D View Container -->
-    <div id="threejs-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+  <header class="topbar">
+    <div class="title">VENTILATOR <strong>//</strong> DIGITAL TWIN</div>
+    <nav class="navLinks" style="display:flex;gap:6px;">
+      <a href="hub.html">Hub</a>
+      <a href="index.html" style="background:#0984f8;color:#fff;border-color:#0984f8;">Macro</a>
+      <a href="micro.html">Micro</a>
+      <a href="sandbox.html">Sandbox</a>
+      <a href="intelligence.html">Intelligence</a>
+    </nav>
+    <span class="statusPill" id="fiwarePill"><i class="dot"></i> ON</span>
+    <div class="clock" id="clock">--:--:--</div>
+  </header>
 
-    <!-- HUD Overlays -->
-    <div class="hud-container">
-        <!-- Info Panel -->
-        <div class="hud-panel" id="infoPanel">
-            <div class="hud-title">
-                <span class="hud-status-light status-stable" id="statusLight"></span>
-                Ventilator Twin
-            </div>
-            <div class="param-row">
-                <span class="param-label">Patient ID</span>
-                <span class="param-value" id="val-patient">-</span>
-            </div>
-            <div class="param-row">
-                <span class="param-label">Status</span>
-                <span class="param-value" id="val-status">-</span>
-            </div>
-            <div style="border-top: 1px solid rgba(100, 116, 139, 0.2); margin: 8px 0;"></div>
-            
-            <div style="font-weight: bold; color: #60a5fa; margin-top: 10px; font-size: 11px;">VENTILATOR SETTINGS</div>
-            <div class="param-row">
-                <span class="param-label">PEEP</span>
-                <span class="param-value" id="val-peep">-</span>
-            </div>
-            <div class="param-row">
-                <span class="param-label">FiO₂</span>
-                <span class="param-value" id="val-fio2">-</span>
-            </div>
-            <div class="param-row">
-                <span class="param-label">Tidal Vol</span>
-                <span class="param-value" id="val-tv">-</span>
-            </div>
-            <div class="param-row">
-                <span class="param-label">Resp Rate</span>
-                <span class="param-value" id="val-rr">-</span>
-            </div>
-            <div class="param-row">
-                <span class="param-label">Pressure</span>
-                <span class="param-value" id="val-pressure">-</span>
-            </div>
+  <div id="scene"></div>
+  <div class="relayBanner show" id="relayBanner">Relay not reachable - showing demo mode. Start Flask relay on :5050 for live FIWARE data.</div>
 
-            <div style="border-top: 1px solid rgba(100, 116, 139, 0.2); margin: 8px 0;"></div>
-            
-            <div style="font-weight: bold; color: #60a5fa; margin-top: 10px; font-size: 11px;">PATIENT VITALS</div>
-            <div class="param-row">
-                <span class="param-label">SpO₂</span>
-                <span class="param-value" id="val-spo2">-</span>
-            </div>
-            <div class="param-row">
-                <span class="param-label">HR</span>
-                <span class="param-value" id="val-hr">-</span>
-            </div>
-            <div class="param-row">
-                <span class="param-label">MAP</span>
-                <span class="param-value" id="val-map">-</span>
-            </div>
-            <div class="param-row">
-                <span class="param-label">Temp</span>
-                <span class="param-value" id="val-temp">-</span>
-            </div>
-        </div>
+  <div class="centerControls">
+    <button class="modeBtn primary" id="macroBtn">Macro</button>
+    <button class="modeBtn dark" id="microBtn">Micro</button>
+    <button class="modeBtn dark" id="resetBtn">Reset</button>
+  </div>
 
-        <!-- Control Panel -->
-        <div class="hud-panel" id="controlPanel">
-            <div class="hud-title">
-                <i class="fas fa-sliders-h"></i> Controls
-            </div>
-            <button class="control-btn active" onclick="switchView('macro')">Macro View</button>
-            <button class="control-btn" onclick="switchView('micro')">Micro View</button>
-            <br>
-            <button class="control-btn" onclick="toggleSandbox()">Sandbox Mode</button>
-            <button class="control-btn" onclick="requestRecommendation()">Get Recommendation</button>
-            <br>
-            <button class="control-btn" onclick="toggleTheme()">🌙 Dark Mode</button>
-            <button class="control-btn" onclick="resetView()">Reset View</button>
-        </div>
+  <aside class="leftRail">
+    <section class="metricCard">
+      <h3>Machine Speed</h3>
+      <div class="metricBig" id="speedVal">--</div>
+      <div class="metricUnit">BPM / cycle</div>
+      <div class="bar"><i id="speedBar" style="width: 50%"></i></div>
+    </section>
+    <section class="metricCard">
+      <h3>Airway Pressure</h3>
+      <div class="row"><span>PEEP</span><strong id="peepVal">--</strong></div>
+      <div class="bar green"><i id="peepBar" style="width: 30%"></i></div>
+      <div class="row"><span>Peak</span><strong id="pressureVal">--</strong></div>
+      <div class="bar"><i id="pressureBar" style="width: 40%"></i></div>
+    </section>
+    <section class="metricCard">
+      <h3>Patient State</h3>
+      <div class="row"><span>SpO2</span><strong id="spo2Val">--</strong></div>
+      <div class="bar green"><i id="spo2Bar" style="width: 90%"></i></div>
+      <div class="row"><span>HR</span><strong id="hrVal">--</strong></div>
+      <div class="bar"><i id="hrBar" style="width: 60%"></i></div>
+    </section>
+    <section class="metricCard">
+      <h3>Mode & Circuit</h3>
+      <button class="modeBtn danger" style="width: 78px;">Assist</button>
+      <div class="row"><span>Circuit</span><strong>Dual limb</strong></div>
+      <div class="row"><span>Patient ID</span><strong id="patientVal">800000</strong></div>
+    </section>
+  </aside>
 
-        <!-- Chart Panel -->
-        <div class="hud-panel" id="chartPanel">
-            <div class="hud-title">
-                <i class="fas fa-chart-line"></i> SpO₂ Trend
-            </div>
-            <div class="chart-container">
-                <canvas id="trendChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Alert Panel -->
-        <div class="hud-panel" id="alertPanel">
-            <div class="hud-title">
-                <i class="fas fa-bell"></i> Alerts
-            </div>
-            <div id="alertsContainer">
-                <div class="alert-item alert-info">System initialized</div>
-            </div>
-        </div>
-
-        <!-- Instructions -->
-        <div class="instructions">
-            🖱️ Drag to rotate | Scroll to zoom | Right-click to pan
-        </div>
+  <section class="panel blueprint">
+    <div class="panelHead">Live Lung Blueprint</div>
+    <div class="panelBody">
+      <div class="patternThumb"></div>
+      <button class="modeBtn" style="width: 100%; margin-top: 12px;">Analytics</button>
+      <button class="modeBtn" style="width: 100%; margin-top: 8px;" onclick="location.href='intelligence.html'">Twin Intelligence</button>
     </div>
+  </section>
 
-    <script>
-        // ──────────────────── THREE.JS SETUP ────────────────────
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0f172a);
-        scene.fog = new THREE.Fog(0x0f172a, 100, 1000);
+  <section class="panel patternPredictor">
+    <div class="panelHead">Pattern Predictor</div>
+    <div class="panelBody">
+      <div class="patternThumb" style="height: 116px;"></div>
+      <select style="width: 100%; margin-top: 10px; height: 36px; border: 1px solid var(--line); border-radius: 4px; background: white;">
+        <option>Protective Ventilation</option>
+        <option>Oxygenation Priority</option>
+        <option>Low Pressure Mode</option>
+      </select>
+      <div class="settingRows">
+        <div class="row"><span>PEEP</span><strong id="predPeep">--</strong></div>
+        <div class="row"><span>FiO2</span><strong id="predFio2">--</strong></div>
+        <div class="row"><span>TV</span><strong id="predTv">--</strong></div>
+        <div class="row"><span>Risk</span><strong id="predRisk">--</strong></div>
+      </div>
+      <button class="modeBtn primary" style="width: 100%; margin-top: 12px;">Apply Settings</button>
+    </div>
+  </section>
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 1.5, 3);
+  <aside class="rightRail">
+    <section class="metricCard">
+      <h3>Defect Rate</h3>
+      <div class="metricBig" id="defectVal" style="color: var(--green);">--</div>
+      <div class="metricUnit">% risk</div>
+      <div class="bar green"><i id="defectBar" style="width: 25%"></i></div>
+    </section>
+    <section class="metricCard">
+      <h3>SpO2 History</h3>
+      <canvas class="spark" id="spo2Chart"></canvas>
+    </section>
+    <section class="metricCard" style="height: 246px;">
+      <h3>Event Log</h3>
+      <div class="terminal" id="eventLog"></div>
+    </section>
+    <section class="metricCard">
+      <h3>Twin Identity</h3>
+      <div class="row"><span>ID</span><strong>ventilator_01</strong></div>
+      <div class="row"><span>NGSI</span><strong>v2</strong></div>
+    </section>
+  </aside>
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFShadowShadowMap;
-        document.getElementById('threejs-container').appendChild(renderer.domElement);
+  <div class="label3d" id="labelTemp">TEMP -- C</div>
+  <div class="label3d" id="labelPressure">PRESSURE --</div>
+  <div class="label3d" id="labelSpo2">SpO2 --</div>
 
-        // ──────────────────── LIGHTING ────────────────────
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
+  <section class="bottomCharts">
+    <div class="chartCard"><h4>Pressure (cmH2O)</h4><canvas class="spark" id="pressureChart"></canvas></div>
+    <div class="chartCard"><h4>Volume (mL)</h4><canvas class="spark" id="volumeChart"></canvas></div>
+    <div class="chartCard"><h4>Anomaly</h4><canvas class="spark" id="riskChart"></canvas></div>
+  </section>
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(5, 10, 7);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        scene.add(directionalLight);
+  <footer class="footer">
+    <span>STATUS <strong id="statusFoot">ON</strong></span>
+    <span>CYCLES <strong id="cyclesFoot">0</strong></span>
+    <span>EFFICIENCY <strong id="effFoot">--</strong></span>
+    <span>QUALITY <strong id="qualityFoot">STABLE</strong></span>
+    <span id="relayFoot">DEMO MODE - relay offline</span>
+  </footer>
 
-        const pointLight = new THREE.PointLight(0x60a5fa, 0.5);
-        pointLight.position.set(-3, 2, 3);
-        scene.add(pointLight);
+  <div class="alertOverlay" id="alertOverlay">
+    <div class="alertBox">
+      <h2>CRITICAL SYSTEM ALERT</h2>
+      <div class="alertContent">
+        <h3>Action Required: Ventilator Check Needed</h3>
+        <p>ABNORMAL PATTERN DETECTED. Inspect patient circuit, oxygenation, airway pressure, and mechanical settings before continuing automated operation.</p>
+        <div class="alertMeta">
+          <div><strong>Source:</strong> Ventilator Digital Twin Monitoring</div>
+          <div><strong>Status:</strong> ABNORMAL_PATTERN_DETECTED</div>
+          <div><strong>Timestamp:</strong> <span id="alertTime">--</span></div>
+        </div>
+        <button class="alertClose" id="alertClose">Acknowledge</button>
+      </div>
+    </div>
+  </div>
 
-        // ──────────────────── VENTILATOR 3D MODEL ────────────────────
-        const ventilatorGroup = new THREE.Group();
-        scene.add(ventilatorGroup);
+  <script>
+    const RELAY = "http://127.0.0.1:5050";
+    const API = "http://127.0.0.1:8000";
 
-        // Main Cabinet
-        const bodyMat = new THREE.MeshStandardMaterial({
-            color: 0x1e293b,
-            metalness: 0.4,
-            roughness: 0.7
-        });
-        const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.6), bodyMat);
-        body.castShadow = true;
-        body.receiveShadow = true;
-        ventilatorGroup.add(body);
-
-        // Display Screen
-        const screenMat = new THREE.MeshStandardMaterial({
-            color: 0x0f172a,
-            emissive: 0x1e40af,
-            emissiveIntensity: 0.5
-        });
-        const screen = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.05), screenMat);
-        screen.position.set(0, 0.6, 0.3);
-        screen.castShadow = true;
-        ventilatorGroup.add(screen);
-
-        // Control Panel
-        const panelMat = new THREE.MeshStandardMaterial({
-            color: 0x334155,
-            metalness: 0.3
-        });
-        const panel = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.05), panelMat);
-        panel.position.set(0, 0, 0.31);
-        panel.castShadow = true;
-        ventilatorGroup.add(panel);
-
-        // Knobs (3 control knobs)
-        const knobs = [];
-        [-0.25, 0, 0.25].forEach(x => {
-            const knob = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.08, 0.08, 0.05, 32),
-                new THREE.MeshStandardMaterial({
-                    color: 0x60a5fa,
-                    metalness: 0.7,
-                    roughness: 0.3
-                })
-            );
-            knob.position.set(x, -0.15, 0.35);
-            knob.castShadow = true;
-            ventilatorGroup.add(knob);
-            knobs.push(knob);
-        });
-
-        // Breathing Circuit
-        const circuitMat = new THREE.MeshStandardMaterial({
-            color: 0x06b6d4,
-            metalness: 0.5,
-            roughness: 0.4
-        });
-        const circuit = new THREE.Mesh(
-            new THREE.TubeGeometry(
-                new THREE.LineCurve3(
-                    new THREE.Vector3(0.45, 0.3, 0),
-                    new THREE.Vector3(0.7, 0.8, 0)
-                ),
-                8, 0.04, 6
-            ),
-            circuitMat
-        );
-        circuit.castShadow = true;
-        ventilatorGroup.add(circuit);
-
-        // Humidifier Chamber
-        const chamber = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.15, 0.3, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0x0ea5e9,
-                metalness: 0.2,
-                roughness: 0.6,
-                transparent: true,
-                opacity: 0.7
-            })
-        );
-        chamber.position.set(0.7, 0.5, 0);
-        chamber.castShadow = true;
-        ventilatorGroup.add(chamber);
-
-        // Water Level
-        const water = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.12, 0.12, 0.1, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0x3b82f6,
-                metalness: 0.1,
-                transparent: true,
-                opacity: 0.8
-            })
-        );
-        water.position.set(0.7, 0.35, 0);
-        ventilatorGroup.add(water);
-
-        // Outlet Tube
-        const outlet = new THREE.Mesh(
-            new THREE.TubeGeometry(
-                new THREE.LineCurve3(
-                    new THREE.Vector3(0.7, 0.65, 0),
-                    new THREE.Vector3(1.0, 1.2, 0.2)
-                ),
-                8, 0.035, 6
-            ),
-            circuitMat
-        );
-        outlet.castShadow = true;
-        ventilatorGroup.add(outlet);
-
-        // Platform
-        const base = new THREE.Mesh(
-            new THREE.BoxGeometry(1.5, 0.05, 1.2),
-            new THREE.MeshStandardMaterial({
-                color: 0x0f172a,
-                metalness: 0.3
-            })
-        );
-        base.position.y = -0.95;
-        base.receiveShadow = true;
-        ventilatorGroup.add(base);
-
-        // ──────────────────── STATE MANAGEMENT ────────────────────
-        let appState = {
-            patient_id: 123,
-            peep: 5.0,
-            fio2: 40.0,
-            tidal_vol: 450.0,
-            resp_rate: 12,
-            pressure: 15.0,
-            spo2: 98.0,
-            hr: 80,
-            map: 75,
-            temperature: 36.8,
-            status: "stable",
-            animationPhase: 0
-        };
-
-        let spo2History = [];
-        let chart = null;
-
-        // ──────────────────── API INTEGRATION ────────────────────
-        const RELAY_API = "http://localhost:5050";
-
-        async function fetchState() {
-            try {
-                const response = await fetch(`${RELAY_API}/twin?patient_id=${appState.patient_id}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    appState = { ...appState, ...data };
-                    updateUI();
-                    recordHistory();
-                    checkAlerts();
-                }
-            } catch (error) {
-                console.warn("API error, using demo mode:", error);
-            }
+    async function refreshFiwarePill() {
+      try {
+        const h = await fetch(`${RELAY}/health`).then((r) => r.json());
+        const pill = document.getElementById("fiwarePill");
+        if (h.fiware?.reachable) {
+          pill.innerHTML = '<i class="dot"></i> LIVE FIWARE DATA';
+          pill.style.background = '#eafff4';
+          pill.style.color = '#1fb66a';
+          document.getElementById("relayBanner").classList.remove("show");
+        } else if (h.digital_twin_api === "ok") {
+          pill.innerHTML = '<i class="dot"></i> API LIVE · ORION OFF';
+          document.getElementById("relayFoot").textContent = "API LIVE - start Orion (:1026) for NGSI-v2";
         }
+      } catch (_) {}
+    }
+    refreshFiwarePill();
+    setInterval(refreshFiwarePill, 4000);
+    const state = {
+      patient_id: 800000,
+      peep: 5,
+      fio2: 40,
+      tidal_vol: 450,
+      resp_rate: 12,
+      pressure: 15,
+      spo2: 97,
+      spo2_predicted: 96.8,
+      hr: 78,
+      map: 76,
+      temperature: 36.8,
+      status: "stable",
+      cycles: 8890329487,
+      risk: 2.7,
+      history: [],
+      relayOnline: false,
+      micro: false
+    };
 
-        function recordHistory() {
-            spo2History.push({
-                spo2: appState.spo2,
-                timestamp: new Date()
-            });
-            if (spo2History.length > 50) {
-                spo2History.shift();
-            }
-            updateChart();
+    const el = (id) => document.getElementById(id);
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const fmt = (v, d = 0) => Number(v || 0).toFixed(d);
+
+    let scene, camera, renderer, root, placeholderGroup, loadedModel, lungL, lungR, bellows, tube, fan;
+    let mouseDown = false;
+    let lastX = 0;
+
+    function initScene() {
+      const mount = el("scene");
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xf4f8fb);
+      camera = new THREE.PerspectiveCamera(50, mount.clientWidth / mount.clientHeight, 0.1, 1000);
+      camera.position.set(6, 4.2, 7);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(mount.clientWidth, mount.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      mount.appendChild(renderer.domElement);
+
+      const ambient = new THREE.HemisphereLight(0xffffff, 0x9fb2c7, 1.1);
+      scene.add(ambient);
+      const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+      sun.position.set(4, 7, 5);
+      scene.add(sun);
+
+      const grid = new THREE.GridHelper(16, 26, 0x4b5563, 0xb8c4d1);
+      grid.position.y = -1.05;
+      scene.add(grid);
+
+      root = new THREE.Group();
+      scene.add(root);
+      buildPlaceholderVentilator();
+      loadMedicalVentilatorModel();
+
+      renderer.domElement.addEventListener("mousedown", (event) => {
+        mouseDown = true;
+        lastX = event.clientX;
+      });
+      window.addEventListener("mouseup", () => mouseDown = false);
+      window.addEventListener("mousemove", (event) => {
+        if (!mouseDown) return;
+        root.rotation.y += (event.clientX - lastX) * 0.006;
+        lastX = event.clientX;
+      });
+      renderer.domElement.addEventListener("wheel", (event) => {
+        camera.position.multiplyScalar(event.deltaY > 0 ? 1.06 : 0.94);
+        camera.position.clampLength(5, 12);
+      });
+      window.addEventListener("resize", resize);
+      animate();
+    }
+
+    function mat(color, roughness = .55, metalness = .08) {
+      return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+    }
+
+    function box(w, h, d, color, x, y, z) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
+      mesh.position.set(x, y, z);
+      placeholderGroup.add(mesh);
+      return mesh;
+    }
+
+    function cyl(r, h, color, x, y, z, rx = 0, rz = 0) {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 32), mat(color));
+      mesh.rotation.x = rx;
+      mesh.rotation.z = rz;
+      mesh.position.set(x, y, z);
+      placeholderGroup.add(mesh);
+      return mesh;
+    }
+
+    function buildPlaceholderVentilator() {
+      placeholderGroup = new THREE.Group();
+      root.add(placeholderGroup);
+      box(2.3, 2.1, 1.2, 0x2f8f7f, 0, .25, 0);
+      box(1.8, .95, .12, 0x0d2538, 0, .55, .63);
+      box(1.25, .55, .13, 0x27bde2, 0, .65, .70);
+      box(2.45, .12, 1.3, 0x1d5f59, 0, -1, 0);
+      cyl(.08, 2.6, 0x1d5f59, -1.05, .25, -.55, 0, 0);
+      cyl(.08, 2.6, 0x1d5f59, 1.05, .25, -.55, 0, 0);
+      cyl(.08, 2.6, 0x1d5f59, -1.05, .25, .55, 0, 0);
+      cyl(.08, 2.6, 0x1d5f59, 1.05, .25, .55, 0, 0);
+      fan = cyl(.42, .16, 0x111827, 0, -.25, .72, Math.PI / 2, 0);
+      bellows = box(.8, .42, .75, 0x7dd3fc, 0, -.42, -.2);
+
+      const patient = new THREE.Group();
+      const bed = new THREE.Mesh(new THREE.BoxGeometry(2.8, .18, 1.4), mat(0xc8d7e5));
+      bed.position.set(0, -1.02, -3.1);
+      patient.add(bed);
+      lungL = new THREE.Mesh(new THREE.SphereGeometry(.32, 24, 18), mat(0x5eead4, .35));
+      lungR = lungL.clone();
+      lungL.scale.set(.75, 1.25, .35);
+      lungR.scale.set(.75, 1.25, .35);
+      lungL.position.set(-.28, -.45, -3.12);
+      lungR.position.set(.28, -.45, -3.12);
+      patient.add(lungL, lungR);
+      placeholderGroup.add(patient);
+
+      tube = new THREE.Group();
+      const points = [
+        new THREE.Vector3(0, .2, .75),
+        new THREE.Vector3(.35, .1, -1),
+        new THREE.Vector3(.1, -.2, -2),
+        new THREE.Vector3(0, -.38, -2.72)
+      ];
+      const curve = new THREE.CatmullRomCurve3(points);
+      const geo = new THREE.TubeGeometry(curve, 64, .055, 16, false);
+      const mesh = new THREE.Mesh(geo, mat(0x0f172a, .35));
+      tube.add(mesh);
+      placeholderGroup.add(tube);
+    }
+
+    function loadMedicalVentilatorModel() {
+      if (!THREE.ColladaLoader) return;
+      const loader = new THREE.ColladaLoader();
+      loader.load(
+        "assets/medical-ventilator/model/Ventilator.dae",
+        (collada) => {
+          loadedModel = collada.scene;
+          const clinicalMaterials = {
+            base: mat(0x2f8f7f, .45, .18),
+            tube: mat(0x111827, .38, .08),
+            other: mat(0x0e7490, .48, .1)
+          };
+          loadedModel.traverse((node) => {
+            if (!node.isMesh) return;
+            node.castShadow = true;
+            node.receiveShadow = true;
+            const name = `${node.name || ""} ${node.material?.name || ""}`.toLowerCase();
+            if (name.includes("tube")) node.material = clinicalMaterials.tube;
+            else if (name.includes("base")) node.material = clinicalMaterials.base;
+            else node.material = clinicalMaterials.other;
+          });
+
+          const bounds = new THREE.Box3().setFromObject(loadedModel);
+          const size = new THREE.Vector3();
+          const center = new THREE.Vector3();
+          bounds.getSize(size);
+          bounds.getCenter(center);
+          const maxAxis = Math.max(size.x, size.y, size.z) || 1;
+          loadedModel.scale.setScalar(3.4 / maxAxis);
+          loadedModel.position.sub(center.multiplyScalar(3.4 / maxAxis));
+          loadedModel.position.y -= .9;
+          loadedModel.rotation.y = -Math.PI / 9;
+          root.add(loadedModel);
+          placeholderGroup.visible = false;
+          el("relayFoot").textContent = `${state.relayOnline ? "LIVE FIWARE DATA" : "DEMO MODE"} - medical ventilator model loaded`;
+        },
+        undefined,
+        () => {
+          placeholderGroup.visible = true;
+          el("relayFoot").textContent = "DEMO MODE - placeholder model";
         }
+      );
+    }
 
-        function checkAlerts() {
-            const alerts = [];
-            
-            if (appState.peep > 15) alerts.push({
-                type: 'warning',
-                message: `⚠️ High PEEP (${appState.peep.toFixed(1)} cmH₂O)`
-            });
-            
-            if (appState.fio2 > 80) alerts.push({
-                type: 'warning',
-                message: `⚠️ High FiO₂ (${appState.fio2.toFixed(0)}%)`
-            });
-            
-            if (appState.tidal_vol > 700) alerts.push({
-                type: 'critical',
-                message: `🚨 Critical Tidal Volume (${appState.tidal_vol.toFixed(0)} mL)`
-            });
-            
-            if (appState.spo2 < 90) alerts.push({
-                type: 'critical',
-                message: `🚨 Low SpO₂ (${appState.spo2.toFixed(1)}%)`
-            });
+    function resize() {
+      const mount = el("scene");
+      camera.aspect = mount.clientWidth / mount.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(mount.clientWidth, mount.clientHeight);
+    }
 
-            displayAlerts(alerts);
-        }
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = performance.now() / 1000;
+      const breath = (Math.sin(t * state.resp_rate / 60 * Math.PI * 2) + 1) / 2;
+      const scale = 1 + breath * .18;
+      lungL.scale.set(.75 * scale, 1.25 * scale, .35 * scale);
+      lungR.scale.set(.75 * scale, 1.25 * scale, .35 * scale);
+      bellows.scale.y = .8 + breath * .45;
+      fan.rotation.z = t * 3.5;
+      root.rotation.y += state.micro ? 0.001 : 0;
+      renderer.render(scene, camera);
+      positionLabels();
+    }
 
-        // ──────────────────── UI UPDATES ────────────────────
-        function updateUI() {
-            document.getElementById('val-patient').textContent = appState.patient_id;
-            document.getElementById('val-status').textContent = appState.status.toUpperCase();
-            document.getElementById('val-peep').textContent = appState.peep.toFixed(1) + ' cmH₂O';
-            document.getElementById('val-fio2').textContent = appState.fio2.toFixed(0) + '%';
-            document.getElementById('val-tv').textContent = appState.tidal_vol.toFixed(0) + ' mL';
-            document.getElementById('val-rr').textContent = appState.resp_rate + ' bpm';
-            document.getElementById('val-pressure').textContent = appState.pressure.toFixed(1) + ' cmH₂O';
-            document.getElementById('val-spo2').textContent = appState.spo2.toFixed(1) + '%';
-            document.getElementById('val-hr').textContent = appState.hr.toFixed(0) + ' bpm';
-            document.getElementById('val-map').textContent = appState.map.toFixed(0) + ' mmHg';
-            document.getElementById('val-temp').textContent = appState.temperature.toFixed(1) + '°C';
+    function positionLabels() {
+      const labels = [
+        [el("labelTemp"), new THREE.Vector3(-1.15, 1.55, .6), `TEMP ${fmt(state.temperature, 1)} C`],
+        [el("labelPressure"), new THREE.Vector3(.98, .95, .8), `PRESSURE ${fmt(state.pressure, 1)}`],
+        [el("labelSpo2"), new THREE.Vector3(.22, -.15, -2.6), `SpO2 ${fmt(state.spo2, 1)}%`]
+      ];
+      const rect = el("scene").getBoundingClientRect();
+      labels.forEach(([node, vec, text]) => {
+        const p = vec.clone().applyMatrix4(root.matrixWorld).project(camera);
+        node.textContent = text;
+        node.style.left = `${rect.left + (p.x * .5 + .5) * rect.width}px`;
+        node.style.top = `${rect.top + (-p.y * .5 + .5) * rect.height}px`;
+      });
+    }
 
-            // Update status light
-            const statusLight = document.getElementById('statusLight');
-            statusLight.className = 'hud-status-light status-' + appState.status;
+    async function fetchState() {
+      try {
+        const res = await fetch(`${RELAY}/twin?patient_id=${state.patient_id}`, { cache: "no-store" });
+        if (!res.ok) throw new Error("relay failed");
+        Object.assign(state, await res.json(), { relayOnline: true });
+      } catch {
+        state.relayOnline = false;
+        demoTick();
+      }
+      updateUi();
+    }
 
-            // Update screen color based on risk
-            if (appState.tidal_vol > 700 || appState.peep > 18) {
-                screenMat.emissive.setHex(0xef4444);
-            } else if (appState.tidal_vol > 600 || appState.peep > 15) {
-                screenMat.emissive.setHex(0xf59e0b);
-            } else if (appState.spo2 < 92) {
-                screenMat.emissive.setHex(0xeab308);
-            } else {
-                screenMat.emissive.setHex(0x1e40af);
-            }
-        }
+    function demoTick() {
+      const t = Date.now() / 1000;
+      state.pressure = 15 + Math.sin(t * 1.2) * 5 + Math.random() * .8;
+      state.tidal_vol = 440 + Math.sin(t * 1.2) * 48;
+      state.spo2 = 95.5 + Math.sin(t * .25) * 1.8 + Math.random() * .25;
+      state.spo2_predicted = state.spo2 + Math.sin(t * .5) * .8;
+      state.hr = 76 + Math.sin(t * .4) * 5;
+      state.map = 78 + Math.sin(t * .35) * 4;
+      state.temperature = 27.6 + Math.sin(t * .15) * .8;
+      state.peep = 5 + Math.sin(t * .3) * .5;
+      state.fio2 = 42 + Math.sin(t * .2) * 4;
+      state.resp_rate = 12 + Math.round(Math.sin(t * .2) * 3);
+      state.risk = clamp(100 - state.spo2 + Math.max(0, state.pressure - 20) * 1.2, 1, 35);
+      state.status = state.spo2 < 92 || state.pressure > 28 ? "critical" : state.spo2 < 94 ? "warning" : "stable";
+      state.cycles += 1;
+    }
 
-        function displayAlerts(alerts) {
-            const container = document.getElementById('alertsContainer');
-            container.innerHTML = '';
-            
-            if (alerts.length === 0) {
-                container.innerHTML = '<div class="alert-item alert-info">✓ All systems normal</div>';
-            } else {
-                alerts.forEach(alert => {
-                    const div = document.createElement('div');
-                    div.className = `alert-item alert-${alert.type}`;
-                    div.textContent = alert.message;
-                    container.appendChild(div);
-                });
-            }
-        }
+    function updateUi() {
+      state.history.push({
+        spo2: state.spo2,
+        pressure: state.pressure,
+        volume: state.tidal_vol,
+        risk: state.risk
+      });
+      state.history = state.history.slice(-80);
 
-        // ──────────────────── CHART ────────────────────
-        function initChart() {
-            const ctx = document.getElementById('trendChart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'SpO₂ (%)',
-                        data: [],
-                        borderColor: '#60a5fa',
-                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        spanGaps: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            min: 85,
-                            max: 100,
-                            ticks: { color: '#94a3b8', font: { size: 10 } },
-                            grid: { color: 'rgba(100, 116, 139, 0.1)' }
-                        },
-                        x: {
-                            ticks: { color: '#94a3b8', font: { size: 10 } },
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-        }
+      el("relayBanner").classList.toggle("show", !state.relayOnline);
+      el("relayFoot").textContent = state.relayOnline ? "LIVE FIWARE DATA" : "DEMO MODE - relay offline";
+      el("patientVal").textContent = state.patient_id || 800000;
+      el("speedVal").textContent = fmt(state.resp_rate, 0);
+      el("speedBar").style.width = `${clamp(state.resp_rate / 30 * 100, 4, 100)}%`;
+      el("peepVal").textContent = `${fmt(state.peep, 1)} cmH2O`;
+      el("peepBar").style.width = `${clamp(state.peep / 16 * 100, 4, 100)}%`;
+      el("pressureVal").textContent = `${fmt(state.pressure, 1)} cmH2O`;
+      el("pressureBar").style.width = `${clamp(state.pressure / 35 * 100, 4, 100)}%`;
+      el("spo2Val").textContent = `${fmt(state.spo2, 1)}%`;
+      el("spo2Bar").style.width = `${clamp(state.spo2, 4, 100)}%`;
+      el("hrVal").textContent = `${fmt(state.hr, 0)} bpm`;
+      el("hrBar").style.width = `${clamp(state.hr / 150 * 100, 4, 100)}%`;
+      el("defectVal").textContent = fmt(state.risk, 1);
+      el("defectBar").style.width = `${clamp(state.risk, 4, 100)}%`;
+      el("predPeep").textContent = `${fmt(state.peep + .5, 1)} cmH2O`;
+      el("predFio2").textContent = `${fmt(state.fio2 + 3, 0)}%`;
+      el("predTv").textContent = `${fmt(state.tidal_vol, 0)} mL`;
+      el("predRisk").textContent = `${fmt(state.risk, 1)}%`;
+      el("cyclesFoot").textContent = Math.round(state.cycles).toString();
+      el("effFoot").textContent = `${fmt(100 - state.risk / 2, 1)}%`;
+      el("qualityFoot").textContent = state.status === "critical" ? "CRITICAL" : state.status === "warning" ? "WARNING" : "STABLE";
+      el("qualityFoot").style.color = state.status === "critical" ? "var(--red)" : state.status === "warning" ? "var(--amber)" : "var(--green)";
+      appendLog();
+      drawSpark(el("spo2Chart"), state.history.map(x => x.spo2), "#0984f8", 90, 100);
+      drawSpark(el("pressureChart"), state.history.map(x => x.pressure), "#12d5ee", 5, 35);
+      drawSpark(el("volumeChart"), state.history.map(x => x.volume), "#12d5ee", 350, 550);
+      drawSpark(el("riskChart"), state.history.map(x => x.risk), state.status === "critical" ? "#ef3b4f" : "#12d5ee", 0, 40);
+      if (state.status === "critical") showAlert();
+    }
 
-        function updateChart() {
-            if (!chart) return;
-            chart.data.labels = spo2History.map((_, i) => i);
-            chart.data.datasets[0].data = spo2History.map(h => h.spo2);
-            chart.update('none');
-        }
+    let lastLog = 0;
+    function appendLog() {
+      if (Date.now() - lastLog < 2400) return;
+      lastLog = Date.now();
+      const log = el("eventLog");
+      const cls = state.status === "critical" ? "bad" : "ok";
+      const text = `[${new Date().toLocaleTimeString()}] <span class="${cls}">[${state.status.toUpperCase()}]</span> SpO2=${fmt(state.spo2, 1)} pressure=${fmt(state.pressure, 1)} risk=${fmt(state.risk, 1)}%`;
+      log.innerHTML = `${text}<br>` + log.innerHTML;
+    }
 
-        // ──────────────────── ANIMATION LOOP ────────────────────
-        function animate() {
-            requestAnimationFrame(animate);
+    function drawSpark(canvas, values, color, min, max) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.clientWidth * devicePixelRatio;
+      const h = canvas.clientHeight * devicePixelRatio;
+      canvas.width = w;
+      canvas.height = h;
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = "#e2e8f0";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 5; i++) {
+        const y = (i / 4) * h;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+      if (values.length < 2) return;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2 * devicePixelRatio;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8 * devicePixelRatio;
+      ctx.beginPath();
+      values.forEach((v, i) => {
+        const x = i / (values.length - 1) * w;
+        const y = h - clamp((v - min) / (max - min), 0, 1) * h;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
 
-            appState.animationPhase++;
+    function showAlert() {
+      if (el("alertOverlay").classList.contains("show")) return;
+      el("alertTime").textContent = new Date().toLocaleString();
+      el("alertOverlay").classList.add("show");
+    }
 
-            // Breathing animation
-            const breatheCycle = (Math.sin(appState.animationPhase * appState.resp_rate * 0.01) + 1) / 2;
-            body.scale.y = 1 - breatheCycle * 0.15;
+    el("alertClose").addEventListener("click", () => el("alertOverlay").classList.remove("show"));
+    el("microBtn").addEventListener("click", () => {
+      state.micro = true;
+      camera.position.set(2.3, 1.3, 3.1);
+      el("microBtn").classList.add("primary");
+      el("macroBtn").classList.remove("primary");
+    });
+    el("macroBtn").addEventListener("click", () => {
+      state.micro = false;
+      camera.position.set(6, 4.2, 7);
+      el("macroBtn").classList.add("primary");
+      el("microBtn").classList.remove("primary");
+    });
+    el("resetBtn").addEventListener("click", () => {
+      root.rotation.set(0, 0, 0);
+      camera.position.set(6, 4.2, 7);
+    });
 
-            // Knob rotations
-            knobs[0].rotation.z = (appState.peep - 3) / 17 * Math.PI * 2;
-            knobs[1].rotation.z = (appState.fio2 - 21) / 79 * Math.PI * 2;
-            knobs[2].rotation.z = (appState.tidal_vol - 200) / 600 * Math.PI * 2;
-
-            // Water level animation
-            water.scale.y = 0.8 + breatheCycle * 0.4;
-
-            // Camera orbit
-            camera.position.x = Math.sin(appState.animationPhase * 0.0003) * 3;
-            camera.position.z = 3 + Math.cos(appState.animationPhase * 0.0003) * 0.5;
-            camera.lookAt(0, 0.5, 0);
-
-            renderer.render(scene, camera);
-        }
-
-        // ──────────────────── CONTROLS ────────────────────
-        function switchView(view) {
-            console.log("Switched to " + view + " view");
-        }
-
-        function toggleSandbox() {
-            console.log("Sandbox mode toggled");
-        }
-
-        function requestRecommendation() {
-            alert("Fetching PPO recommendations...");
-        }
-
-        function toggleTheme() {
-            console.log("Theme toggled");
-        }
-
-        function resetView() {
-            camera.position.set(0, 1.5, 3);
-        }
-
-        // ──────────────────── INITIALIZATION ────────────────────
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        initChart();
-        updateUI();
-        animate();
-
-        // Fetch data every 500ms
-        setInterval(fetchState, 500);
-
-        // Initial fetch
-        fetchState();
-
-        console.log("✓ Ventilator Digital Twin initialized");
-        console.log("Relay API:", RELAY_API);
-    </script>
+    setInterval(() => el("clock").textContent = new Date().toLocaleTimeString(), 1000);
+    initScene();
+    fetchState();
+    setInterval(fetchState, 1200);
+  </script>
 </body>
 </html>

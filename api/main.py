@@ -23,6 +23,7 @@ from services.lstm_inference import get_lstm_forecaster
 from services.multi_risk_inference import MultiRiskInferenceEngine
 from services.prometheus_metrics import metrics_response, record_recommendation_metrics
 from services.chain_anchor import anchor_now
+from services.fiware_adapter import FiwareAdapter
 from tests.test_scenarios import run_all_scenarios, results_to_dict
 
 app = FastAPI(title="Ventilator Digital Twin API")
@@ -37,6 +38,7 @@ app.add_middleware(
 # Initialize Services
 audit_bridge = AuditBridge()
 multi_risk_engine = MultiRiskInferenceEngine()
+fiware_adapter = FiwareAdapter(api_version=os.getenv("FIWARE_API_VERSION", "v2"))
 
 # Repository root (parent of api/)
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -465,6 +467,27 @@ async def get_recommendation(stay_id: int, payload: Dict[str, Any]):
         actor="SYSTEM_PPO"
     )
 
+    try:
+        fiware_adapter.publish_recommendation(
+            stay_id=int(stay_id),
+            result=result,
+            current_vitals=current_vitals,
+            history_length=len(history),
+        )
+        twin = result.get("twin_simulation") or {}
+        if twin:
+            fiware_adapter.publish_entity(
+                int(stay_id),
+                {
+                    "trajectory": twin.get("trajectory"),
+                    "meanSpO2": twin.get("mean_spo2"),
+                    "deltaSpO2": twin.get("delta_spo2"),
+                    "riskFlag": twin.get("risk_flag"),
+                },
+            )
+    except Exception:
+        pass
+
     return result
 
 @app.post("/patient/{stay_id}/risks")
@@ -600,11 +623,14 @@ async def model_evaluation():
 
 @app.get("/fiware/status")
 async def fiware_status():
-    """Return FIWARE integration status for the audit/system page."""
+    """Return FIWARE Orion integration status (NGSI-v2 / NGSI-LD per FIWARE_API_VERSION)."""
+    health = fiware_adapter.health_check()
     return {
-        "enabled": False,
-        "base_url": os.getenv("FIWARE_BASE_URL", ""),
-        "health": {"reachable": False, "message": "FIWARE adapter not configured in this run"},
+        "enabled": fiware_adapter.enabled,
+        "base_url": fiware_adapter.base_url,
+        "api_version": fiware_adapter.api_version,
+        "service": fiware_adapter.service,
+        "health": health,
     }
 
 

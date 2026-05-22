@@ -367,7 +367,7 @@
     </main>
 
     <script>
-        const API_BASE = "http://localhost:8001";
+        const API_BASE = "http://localhost:8000";
         let mainChart = null;
         let twinChart = null;
         let currentPatientData = null;
@@ -626,7 +626,7 @@
                 updateAuditLog(auditData.trail);
                 
             } catch (err) {
-                console.error("AI failed", err);
+                console.error("Recommendation failed", err);
                 document.getElementById('ai-status').innerHTML = '<i class="fas fa-exclamation-triangle text-red-400"></i> Error';
             }
         }

@@ -42,15 +42,15 @@
   },
   "n_features": 102,
   "seq_len": 12,
-  "n_train": 37984,
-  "n_val": 8139,
-  "n_test": 8140,
+  "n_train": 512055,
+  "n_val": 109726,
+  "n_test": 109727,
   "positive_rates_train": {
-    "Hypoxia_Risk": 0.01732308340353833,
-    "Tachycardia_Risk": 0.0069502948609941025,
-    "Hypotension_Risk": 0.08880054759898905,
-    "Tachypnea_Risk": 0.07337299915754002,
-    "VILI_Risk": 0.18212931760741366,
-    "Shock_Risk": 0.2897535804549284
+    "Hypoxia_Risk": 0.01874798605618537,
+    "Tachycardia_Risk": 0.007827284178457392,
+    "Hypotension_Risk": 0.10708615285467381,
+    "Tachypnea_Risk": 0.0786927185556239,
+    "VILI_Risk": 0.20016795070842,
+    "Shock_Risk": 0.2989737430549453
   }
 }

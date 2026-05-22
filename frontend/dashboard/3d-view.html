@@ -417,7 +417,7 @@
             <i class="fas fa-compress"></i> Micro View
         </button>
         <button class="control-btn" onclick="requestRecommendation()">
-            <i class="fas fa-brain"></i> AI Recommendation
+            <i class="fas fa-brain"></i> Clinical Recommendation
         </button>
         <button class="control-btn" onclick="resetView()">
             <i class="fas fa-redo"></i> Reset View
@@ -469,7 +469,7 @@
     <script>
             // Detect if running via /app route or as file
             const API_BASE = window.location.origin === 'file://' 
-                ? "http://127.0.0.1:8001"
+                ? "http://127.0.0.1:8000"
                 : window.location.origin;
 
         // ──────────────────── THREE.JS SETUP ────────────────────

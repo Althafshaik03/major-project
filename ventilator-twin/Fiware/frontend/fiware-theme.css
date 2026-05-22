@@ -1,0 +1,221 @@
+:root {
+  --bg: #f7f9fb;
+  --ink: #273142;
+  --muted: #7c8797;
+  --line: #dce5ef;
+  --blue: #0984f8;
+  --cyan: #12d5ee;
+  --green: #1fb66a;
+  --amber: #ffb020;
+  --red: #ef3b4f;
+  --panel: rgba(255, 255, 255, 0.92);
+  --shadow: 0 14px 36px rgba(38, 55, 77, 0.13);
+  font-family: "Courier New", ui-monospace, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background: linear-gradient(180deg, #fff 0%, #eef4f8 100%);
+  letter-spacing: 0.06em;
+}
+a { color: inherit; text-decoration: none; }
+
+.topbar {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.95);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.title { font-weight: 800; font-size: 13px; }
+.title strong { color: var(--blue); }
+.navLinks { display: flex; gap: 8px; flex-wrap: wrap; }
+.navLinks a {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #f4f7fa;
+}
+.navLinks a.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid var(--line);
+}
+.statusPill.live { background: #eafff4; color: var(--green); border-color: #bdebd4; }
+.statusPill.warn { background: #fff7e8; color: var(--amber); border-color: #ffe2a8; }
+.dot { width: 8px; height: 8px; border-radius: 999px; background: currentColor; box-shadow: 0 0 10px currentColor; }
+.clock { color: var(--muted); font-size: 11px; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  box-shadow: var(--shadow);
+}
+.hubMain { padding: 16px; max-width: 1100px; margin: 0 auto; }
+.hubHero { padding: 20px; margin-bottom: 14px; }
+.hubHero h1 { margin: 0 0 10px; font-size: 20px; color: var(--blue); }
+.hubHero p { margin: 0 0 14px; line-height: 1.55; font-size: 12px; color: var(--muted); }
+.hubArch { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.archStep {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #f0f7ff;
+}
+.archArrow { color: var(--blue); font-weight: 800; }
+.hubGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.hubCard { padding: 16px; display: block; transition: transform 0.15s; }
+.hubCard:hover { transform: translateY(-2px); }
+.hubCard h2 { margin: 0 0 8px; font-size: 14px; color: var(--blue); }
+.hubCard p { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.5; }
+.hubTag {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 10px;
+  color: var(--blue);
+  border: 1px solid var(--line);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.hubRun { padding: 16px; }
+.hubRun pre {
+  margin: 10px 0 0;
+  padding: 12px;
+  background: #0f172a;
+  color: #dbeafe;
+  border-radius: 6px;
+  font-size: 11px;
+  overflow: auto;
+}
+
+/* Full-screen twin layout */
+body.twinFull { overflow: hidden; height: 100vh; }
+#scene {
+  position: absolute;
+  inset: 42px 0 120px;
+  background: linear-gradient(180deg, #f8fbfd 0%, #e8f0f4 100%);
+}
+.footerCharts {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 118px;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  padding: 8px 12px 10px;
+  background: rgba(255, 255, 255, 0.94);
+  border-top: 1px solid var(--line);
+  z-index: 12;
+}
+.chartCard {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #fff;
+}
+.chartCard h4 { margin: 0 0 4px; font-size: 9px; color: var(--blue); }
+.chartCard canvas { width: 100%; height: 72px; display: block; }
+
+.leftRail, .rightRail {
+  position: absolute;
+  top: 54px;
+  width: 176px;
+  display: grid;
+  gap: 10px;
+  z-index: 11;
+}
+.leftRail { left: 14px; }
+.rightRail { right: 14px; }
+.metricCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+.metricCard h3 { margin: 0 0 8px; font-size: 11px; color: var(--blue); }
+.metricBig { font-size: 32px; text-align: center; color: var(--blue); font-weight: 500; }
+.metricUnit { text-align: center; color: var(--muted); font-size: 10px; }
+.bar { height: 5px; border-radius: 999px; background: #ecf1f5; overflow: hidden; margin-top: 10px; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--cyan)); }
+.bar.green i { background: linear-gradient(90deg, var(--green), #8be7b7); }
+.bar.red i { background: linear-gradient(90deg, var(--red), #ff9aa8); }
+.row { display: flex; justify-content: space-between; font-size: 11px; margin: 8px 0; color: var(--muted); }
+.row strong { color: var(--ink); }
+
+.modeBtn {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: #f4f7fa;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+.modeBtn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+.centerControls {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 12;
+}
+.label3d {
+  position: absolute;
+  z-index: 12;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+}
+.terminal {
+  height: 180px;
+  overflow: auto;
+  font-size: 10px;
+  color: var(--muted);
+  background: #0f172a;
+  color: #cbd5e1;
+  padding: 8px;
+  border-radius: 4px;
+}
+.logLine { margin-bottom: 4px; }
+.logLine span { color: #60a5fa; }
+
+@media (max-width: 900px) {
+  .hubGrid { grid-template-columns: 1fr; }
+  .leftRail, .rightRail { display: none; }
+  .footerCharts { grid-template-columns: repeat(3, 1fr); height: 200px; }
+}

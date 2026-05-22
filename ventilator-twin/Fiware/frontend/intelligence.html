@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOOM INTELLIGENCE // Ventilator Prediction</title>
+  <link rel="stylesheet" href="fiware-theme.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/ColladaLoader.js"></script>
+  <style>
+    body { display: grid; grid-template-rows: 42px 1fr; height: 100vh; overflow: hidden; }
+    .intelGrid { display: grid; grid-template-columns: 320px 1fr 360px; height: 100%; }
+    .col { padding: 12px; overflow-y: auto; border-right: 1px solid var(--line); background: var(--panel); }
+    .col:last-child { border-right: 0; }
+    .apiCard {
+      border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin-bottom: 10px;
+      background: #f8fbfd;
+    }
+    .apiCard h4 { margin: 0 0 8px; font-size: 11px; color: var(--blue); }
+    .apiCard .metric { font-size: 22px; color: var(--green); font-weight: 800; }
+    .btnRow { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    #scene3d { height: 100%; min-height: 360px; background: #eef4f8; }
+    .resultBox {
+      margin-top: 12px; padding: 12px; border-radius: 6px;
+      background: #eafff4; border: 1px solid #bdebd4; color: #166534;
+      font-weight: 800;
+    }
+    .paramTable { width: 100%; font-size: 10px; border-collapse: collapse; }
+    .paramTable td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">VENTILATOR INTELLIGENCE <strong>// PREDICTION & OPTIMIZATION</strong></div>
+    <nav class="navLinks">
+      <a href="hub.html">Hub</a>
+      <a href="index.html">Macro</a>
+      <a href="micro.html">Micro</a>
+      <a href="sandbox.html">Sandbox</a>
+      <a href="intelligence.html" class="active">Intelligence</a>
+    </nav>
+    <a href="index.html" class="modeBtn">BACK TO TWIN</a>
+    <div id="clock" class="clock"></div>
+  </header>
+
+  <div class="intelGrid">
+    <aside class="col">
+      <h3 style="font-size:11px;color:var(--blue);">API REQUESTS (MAJOR PROJECT)</h3>
+      <div class="apiCard">
+        <h4>1. Predict Hypoxia Risk (LSTM)</h4>
+        <div class="metric" id="hypoxiaOut">--</div>
+        <div class="btnRow">
+          <button class="modeBtn primary" data-call="recommend">RUN /recommend</button>
+        </div>
+      </div>
+      <div class="apiCard">
+        <h4>2. PPO Ventilator Optimizer</h4>
+        <div class="metric" id="ppoOut">--</div>
+        <small>Proposed PEEP / FiO₂ / TV</small>
+      </div>
+      <div class="apiCard">
+        <h4>3. Digital Twin Replay</h4>
+        <div class="metric" id="replayOut">--</div>
+        <div class="btnRow">
+          <button class="modeBtn" data-call="replay">POST /twin/replay</button>
+        </div>
+      </div>
+      <div class="apiCard">
+        <h4>4. FIWARE Context Sync</h4>
+        <div class="metric" id="fiwareOut">--</div>
+        <div class="btnRow">
+          <button class="modeBtn" data-call="fiware">GET /fiware/status</button>
+        </div>
+      </div>
+      <div class="apiCard">
+        <h4>5. Blockchain Audit Verify</h4>
+        <div class="btnRow">
+          <button class="modeBtn" onclick="window.open('http://127.0.0.1:5173/','_blank')">Open Ventilator OS</button>
+        </div>
+      </div>
+      <h3 style="font-size:11px;color:var(--blue);">EVENT LOG</h3>
+      <div class="terminal" id="eventLog" style="height:140px;"></div>
+    </aside>
+
+    <main><div id="scene3d"></div></main>
+
+    <aside class="col">
+      <h3 style="font-size:11px;color:var(--blue);">PREDICTION RESULTS</h3>
+      <div id="apiStatus" class="row"><span>Status</span><strong>IDLE</strong></div>
+      <table class="paramTable" id="paramTable">
+        <tr><td>Observed SpO₂</td><td id="p_spo2">--</td></tr>
+        <tr><td>LSTM Next SpO₂</td><td id="p_pred">--</td></tr>
+        <tr><td>Hypoxia Prob</td><td id="p_hyp">--</td></tr>
+        <tr><td>Proposed PEEP</td><td id="p_peep">--</td></tr>
+        <tr><td>Proposed FiO₂</td><td id="p_fio2">--</td></tr>
+        <tr><td>Proposed TV</td><td id="p_tv">--</td></tr>
+        <tr><td>Twin Mean SpO₂</td><td id="p_twin">--</td></tr>
+        <tr><td>Alert Level</td><td id="p_alert">--</td></tr>
+      </table>
+      <div class="resultBox" id="resultBox">Run an API request to see clinical co-pilot output.</div>
+      <h3 style="font-size:11px;color:var(--blue);margin-top:14px;">Rationale</h3>
+      <p id="rationale" style="font-size:11px;color:var(--muted);line-height:1.5;">—</p>
+    </aside>
+  </div>
+
+  <script src="fiware-common.js"></script>
+  <script>
+    const { fmt, relay, bindClock, renderEventLog, API } = VentFiware;
+    bindClock(document.getElementById("clock"));
+
+    async function runRecommend() {
+      document.getElementById("apiStatus").innerHTML = "<span>Status</span><strong>RUNNING…</strong>";
+      const rec = await relay("/twin/recommend?patient_id=800000");
+      document.getElementById("hypoxiaOut").textContent = `${(Number(rec.hypoxia_prob || 0) * 100).toFixed(1)}%`;
+      document.getElementById("ppoOut").textContent = `PEEP ${fmt(rec.proposed?.PEEP)} · FiO₂ ${fmt(rec.proposed?.FiO2)}`;
+      document.getElementById("p_spo2").textContent = fmt(rec.current?.SpO2);
+      document.getElementById("p_pred").textContent = fmt(rec.pred_next_spo2);
+      document.getElementById("p_hyp").textContent = `${(Number(rec.hypoxia_prob || 0) * 100).toFixed(1)}%`;
+      document.getElementById("p_peep").textContent = fmt(rec.proposed?.PEEP);
+      document.getElementById("p_fio2").textContent = fmt(rec.proposed?.FiO2);
+      document.getElementById("p_tv").textContent = fmt(rec.proposed?.TidalVol, 0);
+      document.getElementById("p_twin").textContent = fmt(rec.twin_simulation?.mean_spo2);
+      document.getElementById("p_alert").textContent = rec.alert_level || "--";
+      document.getElementById("resultBox").textContent = `API SUCCESS · ${rec.lstm_forecast_source || "heuristic"} forecast`;
+      document.getElementById("rationale").textContent = rec.rationale || "—";
+      document.getElementById("apiStatus").innerHTML = '<span>Status</span><strong style="color:var(--green)">API SUCCESS</strong>';
+    }
+
+    async function runReplay() {
+      const twin = await relay("/twin?patient_id=800000");
+      const body = {
+        proposed: {
+          PEEP: twin.proposed_peep || twin.peep,
+          FiO2: twin.proposed_fio2 || twin.fio2,
+          TidalVol: twin.proposed_tv || twin.tidal_vol,
+        },
+        steps: 8,
+      };
+      const data = await relay("/sandbox/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const r = data.result || {};
+      document.getElementById("replayOut").textContent = `Δ ${fmt(r.delta_spo2)}`;
+      document.getElementById("resultBox").textContent = `REPLAY mean SpO₂ ${fmt(r.mean_spo2)}% · risk ${r.risk_flag ? "YES" : "no"}`;
+    }
+
+    async function runFiware() {
+      const f = await relay("/fiware/status");
+      document.getElementById("fiwareOut").textContent = f.orion?.reachable ? "ONLINE" : "OFFLINE";
+      document.getElementById("resultBox").textContent = `Orion ${f.orion?.reachable ? "reachable" : "offline"} · entity ${f.entity_id}`;
+    }
+
+    document.querySelectorAll("[data-call]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          if (btn.dataset.call === "recommend") await runRecommend();
+          if (btn.dataset.call === "replay") await runReplay();
+          if (btn.dataset.call === "fiware") await runFiware();
+          const ev = await relay("/events");
+          renderEventLog(document.getElementById("eventLog"), ev.events);
+        } catch (e) {
+          document.getElementById("resultBox").textContent = `Error: ${e.message}`;
+        }
+      });
+    });
+
+    setInterval(async () => {
+      try {
+        const ev = await relay("/events");
+        renderEventLog(document.getElementById("eventLog"), ev.events);
+      } catch (_) {}
+    }, 3000);
+
+    // 3D twin preview
+    const mount = document.getElementById("scene3d");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf0f4f8);
+    const camera = new THREE.PerspectiveCamera(45, mount.clientWidth / mount.clientHeight, 0.1, 100);
+    camera.position.set(3, 2, 4);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    mount.appendChild(renderer.domElement);
+    const root = new THREE.Group();
+    scene.add(root);
+    scene.add(new THREE.AmbientLight(0xffffff, 1));
+    const d = new THREE.DirectionalLight(0xffffff, 0.8);
+    d.position.set(4, 6, 3);
+    scene.add(d);
+    if (THREE.ColladaLoader) {
+      new THREE.ColladaLoader().load("assets/medical-ventilator/model/Ventilator.dae", (c) => {
+        if (c?.scene) { root.add(c.scene); c.scene.scale.setScalar(0.02); }
+      });
+    }
+    const loop = () => {
+      requestAnimationFrame(loop);
+      root.rotation.y += 0.005;
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+    };
+    loop();
+  </script>
+</body>
+</html>
