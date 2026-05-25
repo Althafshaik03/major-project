@@ -225,11 +225,42 @@ async def get_patient_history(stay_id: int):
 
 @app.post("/patient/{stay_id}/tick")
 async def advance_patient_stream(stay_id: int):
-    """Advances the simulation clock by 1 tick (bringing in 1 new record)"""
-    if stay_id in patient_stream_cursors:
-        patient_stream_cursors[stay_id] += 1
-        return {"status": "advanced", "current_cursor": patient_stream_cursors[stay_id]}
-    return {"status": "error", "message": "Stream not initialized"}
+    """Advance the dashboard stream by one row and return the new vitals record."""
+    if df_index is not None and PATIENT_CSV_PATH:
+        try:
+            iter_csv = pd.read_csv(PATIENT_CSV_PATH, iterator=True, chunksize=10000)
+            patient_data = pd.concat([chunk[chunk["stay_id"] == stay_id] for chunk in iter_csv])
+            if patient_data.empty:
+                payload = _history_payload_from_simulator(stay_id)
+            else:
+                patient_data = patient_data.sort_values("charttime").reset_index(drop=True)
+                if stay_id not in patient_stream_cursors:
+                    patient_stream_cursors[stay_id] = max(1, len(patient_data) // 2)
+                patient_stream_cursors[stay_id] += 1
+                if patient_stream_cursors[stay_id] > len(patient_data):
+                    patient_stream_cursors[stay_id] = 1
+                cursor = patient_stream_cursors[stay_id]
+                latest = patient_data.iloc[cursor - 1].to_dict()
+                return {
+                    "status": "advanced",
+                    "current_cursor": cursor,
+                    "latest_record": latest,
+                    "source": "csv",
+                }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e)) from e
+    else:
+        payload = _history_payload_from_simulator(stay_id)
+
+    patient_stream_cursors[stay_id] = patient_stream_cursors.get(stay_id, 1) + 1
+    payload = _history_payload_from_simulator(stay_id)
+    latest = payload["history"][-1] if payload.get("history") else None
+    return {
+        "status": "advanced" if latest else "error",
+        "current_cursor": patient_stream_cursors.get(stay_id),
+        "latest_record": latest,
+        "source": payload.get("source", "simulator"),
+    }
 
 
 @app.post("/simulator/session/{stay_id}")

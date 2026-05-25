@@ -128,7 +128,7 @@ export default function DigitalTwinPage({ selected, PageHeader, Button, Metric, 
             </div>
             <VentilatorScene
               alertLevel={recommendation?.alert_level || "STABLE"}
-              spo2={Number(latest.SpO2 ?? twin.trajectory?.[0])}
+              spo2={Number(latest.SpO2 ?? twin.trajectory?.[0] ?? 95)}
               respRate={Number(latest.RespRate ?? 12)}
               peep={Number(proposed.PEEP ?? latest.PEEP ?? 5)}
               fio2={Number(proposed.FiO2 ?? latest.FiO2 ?? 40)}
@@ -142,7 +142,7 @@ export default function DigitalTwinPage({ selected, PageHeader, Button, Metric, 
             <div className="panel">
               <div className="panelHead"><h2>Live Telemetry</h2><span>Patient {selected || "--"}</span></div>
               <div className="grid two compact">
-                <Metric label="SpO₂" value={`${fmt(latest.SpO2)}%`} tone={Number(latest.SpO2) < 92 ? "danger" : "good"} />
+                <Metric label="SpO₂" value={latest.SpO2 !== undefined && latest.SpO2 !== null ? `${fmt(latest.SpO2)}%` : "--"} tone={latest.SpO2 !== undefined && latest.SpO2 !== null ? (Number(latest.SpO2) < 92 ? "danger" : "good") : ""} />
                 <Metric label="HR" value={fmt(latest.HR, 0)} />
                 <Metric label="MAP" value={fmt(latest.MAP, 0)} />
                 <Metric label="Resp Rate" value={fmt(latest.RespRate, 0)} />
@@ -162,7 +162,7 @@ export default function DigitalTwinPage({ selected, PageHeader, Button, Metric, 
                 <>
                   <div className="grid three compact">
                     <Metric label="Mean SpO₂" value={`${fmt(twin.mean_spo2)}%`} />
-                    <Metric label="Δ SpO₂" value={fmt(twin.delta_spo2)} tone={Number(twin.delta_spo2) < 0 ? "danger" : "good"} />
+                    <Metric label="Δ SpO₂" value={fmt(twin.delta_spo2)} tone={twin.delta_spo2 !== undefined && twin.delta_spo2 !== null ? (Number(twin.delta_spo2) < 0 ? "danger" : "good") : ""} />
                     <Metric label="Uncertainty" value={`±${fmt(twin.uncertainty)}`} />
                   </div>
                   <div className="twinFlags">

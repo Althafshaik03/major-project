@@ -1,7 +1,9 @@
 {
-  "next_spo2_mae": 1.5302,
-  "next_spo2_rmse": 2.5499,
-  "hypoxia_auroc": 0.8733,
-  "hypoxia_avg_prec": 0.4547,
-  "hypoxia_f1_thresh05": 0.3754
+  "next_spo2_mae": 3.8704,
+  "next_spo2_rmse": 5.0565,
+  "hypoxia_auroc": 0.9835,
+  "hypoxia_avg_prec": 0.9938,
+  "hypoxia_f1_thresh05": 0.9474,
+  "hypoxia_f1_optimal": 0.963,
+  "hypoxia_optimal_threshold": 0.6
 }

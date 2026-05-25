@@ -29,7 +29,7 @@ DIGITAL_TWIN_API = os.getenv("DIGITAL_TWIN_API", "http://127.0.0.1:8000")
 FIWARE_ORION = os.getenv("FIWARE_ORION", "http://127.0.0.1:1026").rstrip("/")
 FIWARE_SERVICE = os.getenv("FIWARE_SERVICE", "openiot")
 FIWARE_SERVICE_PATH = os.getenv("FIWARE_SERVICE_PATH", "/")
-FIWARE_ENABLED = os.getenv("FIWARE_ENABLED", "true").lower() not in ("0", "false", "no")
+FIWARE_ENABLED = os.getenv("FIWARE_ENABLED", "false").lower() not in ("0", "false", "no")
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() not in ("0", "false", "no")
 DEFAULT_PATIENT_ID = int(os.getenv("DEFAULT_PATIENT_ID", "800000"))
 POLL_MS = int(os.getenv("RELAY_POLL_MS", "500"))
@@ -281,7 +281,7 @@ def sync_state(patient_id: int) -> Dict[str, Any]:
 def health():
     api_ok = False
     try:
-        api_ok = requests.get(f"{DIGITAL_TWIN_API}/health", timeout=2).status_code == 200
+        api_ok = requests.get(f"{DIGITAL_TWIN_API}/health", timeout=8).status_code == 200
     except Exception:
         pass
     orion = orion_health()

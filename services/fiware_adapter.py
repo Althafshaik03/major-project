@@ -25,8 +25,8 @@ class FiwareAdapter:
         self.api_version = (api_version or os.getenv("FIWARE_API_VERSION", DEFAULT_FIWARE_API_VERSION)).lower()
         self.service = service or os.getenv("FIWARE_SERVICE", DEFAULT_FIWARE_SERVICE)
         self.service_path = service_path or os.getenv("FIWARE_SERVICE_PATH", DEFAULT_FIWARE_SERVICE_PATH)
-        self.enabled = os.getenv("FIWARE_ENABLED", "true").strip().lower() not in ("0", "false", "no")
-        self.client = httpx.Client(timeout=10.0)
+        self.enabled = os.getenv("FIWARE_ENABLED", "false").strip().lower() not in ("0", "false", "no")
+        self.client = httpx.Client(timeout=2.0)
 
     def _headers(self) -> Dict[str, str]:
         if self.api_version == "ld":

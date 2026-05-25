@@ -124,13 +124,13 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { ColladaLoader } from "three/examples/jsm/loaders/ColladaLoader.js";
 import { api, API_BASE } from "./api";
-import DigitalTwinPage from "./DigitalTwinPage.jsx";
+
 import "./styles.css";
 
 const pages = [
   { id: "live", label: "Dashboard", icon: LayoutDashboard },
-  { id: "twin", label: "Digital Twin", icon: Box },
-  { id: "fiware", label: "FIWARE Twin", icon: Wind, external: "http://127.0.0.1:8080/hub.html" },
+
+  { id: "fiware", label: "FIWARE Twin", icon: Wind, external: "http://localhost:8080/hub.html" },
   { id: "tests", label: "Test Cases", icon: FlaskConical },
   { id: "models", label: "Model Metrics", icon: BarChart3 },
   { id: "audit", label: "Audit", icon: ShieldCheck },
@@ -217,16 +217,7 @@ function App() {
       </aside>
       <main>
         {page === "live" && <LivePage selected={selected} setSelected={setSelected} patients={patients} />}
-        {page === "twin" && (
-          <DigitalTwinPage
-            selected={selected}
-            PageHeader={PageHeader}
-            Button={Button}
-            Metric={Metric}
-            Empty={Empty}
-            LoadingBlock={LoadingBlock}
-          />
-        )}
+
         {page === "tests" && <TestLabPage />}
         {page === "models" && <ModelMetricsPage />}
         {page === "audit" && <AuditPage />}
@@ -569,7 +560,7 @@ function LivePage({ selected, setSelected, patients }) {
           </div>
         </div>
         <div className="rightStack">
-          <ClinicalDecisionPanel recommendation={recommendation} multiRisk={multiRisk} predicting={predicting} />
+          <ClinicalDecisionPanel selected={selected} recommendation={recommendation} multiRisk={multiRisk} predicting={predicting} />
           <ThreeDPanel latest={latest} recommendation={recommendation} />
           <AuditLedgerCard selected={selected} />
         </div>
@@ -607,7 +598,10 @@ function LivePage({ selected, setSelected, patients }) {
     </>
   );
 }
-function ClinicalDecisionPanel({ recommendation, multiRisk, predicting }) {
+function ClinicalDecisionPanel({ selected, recommendation, multiRisk, predicting }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState(null);
+
   const regression = multiRisk?.predictions?.regression || {};
   const classification = multiRisk?.predictions?.classification || {};
   const explainability = [
@@ -615,6 +609,46 @@ function ClinicalDecisionPanel({ recommendation, multiRisk, predicting }) {
     ["PEEP Setting", recommendation?.proposed?.PEEP ? 0.4 : 0],
     ["Heart Rate", regression?.Next_HR?.prediction ? 0.1 : 0],
   ];
+
+  const handleDecision = async (actionType) => {
+    if (!selected) return;
+    setSubmitting(true);
+    setStatusMessage(null);
+    try {
+      let notes = "";
+      if (actionType === "accept") {
+        notes = "Clinician accepted RL co-pilot recommendation.";
+      } else if (actionType === "override") {
+        const promptText = window.prompt("Enter clinical justification for overriding this recommendation:");
+        if (promptText === null) {
+          // Clinician clicked Cancel
+          setSubmitting(false);
+          return;
+        }
+        notes = promptText.trim() || "Clinician overrode recommendation.";
+      }
+
+      const payload = {
+        action: actionType,
+        notes: notes,
+        settings: recommendation?.proposed || {},
+      };
+
+      const block = await api.auditAction(selected, payload);
+      setStatusMessage({
+        type: "success",
+        text: `Logged: Block #${block.index || block.block_index || "Valid"} verified on ledger!`,
+      });
+    } catch (err) {
+      console.error(err);
+      setStatusMessage({
+        type: "error",
+        text: err.message || "Failed to commit action to audit ledger.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="panel decisionPanel">
@@ -651,9 +685,31 @@ function ClinicalDecisionPanel({ recommendation, multiRisk, predicting }) {
           </div>
         ))}
       </div>
+      {statusMessage && (
+        <div style={{
+          marginTop: '12px',
+          padding: '10px 12px',
+          borderRadius: '6px',
+          fontSize: '12px',
+          border: '1px solid',
+          borderColor: statusMessage.type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)',
+          background: statusMessage.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+          color: statusMessage.type === 'success' ? '#4ade80' : '#fca5a5',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          {statusMessage.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+          <span>{statusMessage.text}</span>
+        </div>
+      )}
       <div className="decisionActions">
-        <Button variant="accept"><CheckCircle2 size={16} /> Accept</Button>
-        <Button variant="override"><Activity size={16} /> Override</Button>
+        <Button variant="accept" onClick={() => handleDecision("accept")} disabled={submitting || !recommendation}>
+          <CheckCircle2 size={16} /> {submitting ? "Signing..." : "Accept"}
+        </Button>
+        <Button variant="override" onClick={() => handleDecision("override")} disabled={submitting || !recommendation}>
+          <Activity size={16} /> {submitting ? "Signing..." : "Override"}
+        </Button>
       </div>
     </div>
   );

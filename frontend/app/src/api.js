@@ -31,6 +31,8 @@ export const api = {
   evaluation: () => request("/model/evaluation"),
   auditVerify: () => request("/audit/verify"),
   auditTrail: (stayId) => request(`/patient/${stayId}/audit_trail`),
+  auditAction: (stayId, payload) =>
+    request(`/patient/${stayId}/audit`, { method: "POST", body: JSON.stringify(payload) }),
   fiware: () => request("/fiware/status"),
   twinReplay: (payload) => request("/twin/replay", { method: "POST", body: JSON.stringify(payload) }),
 };

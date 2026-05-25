@@ -44,6 +44,20 @@ class SimulatorApiTests(unittest.TestCase):
         ]:
             self.assertIn(required, record)
 
+    def test_patient_tick_returns_latest_record_for_dashboard_stream(self) -> None:
+        history_resp = self.client.get("/patient/910010/history")
+        self.assertEqual(history_resp.status_code, 200)
+
+        tick_resp = self.client.post("/patient/910010/tick")
+        self.assertEqual(tick_resp.status_code, 200)
+        payload = tick_resp.json()
+        self.assertEqual(payload["status"], "advanced")
+        self.assertIn("latest_record", payload)
+
+        latest = payload["latest_record"]
+        for required in ["HR", "MAP", "RespRate", "SpO2", "PEEP", "FiO2", "TidalVol"]:
+            self.assertIn(required, latest)
+
     def test_batch_limits_and_not_found_handling(self) -> None:
         missing_session_resp = self.client.get(
             "/simulator/session/missing:session:key/batch",

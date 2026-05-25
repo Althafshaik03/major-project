@@ -150,7 +150,7 @@ class PPOPolicy:
             'FiO2':     proposed_FiO2,
             'TidalVol': proposed_TV,
         }
-        twin_result = self.twin.simulate(proposed, curr_spo2, steps=4)
+        twin_result = self.twin.simulate(proposed, curr_spo2, steps=8)
 
         # ── Confidence ────────────────────────────────────────────────────────
         confidence = self._compute_confidence(hypoxia_prob, pred_spo2, twin_result)

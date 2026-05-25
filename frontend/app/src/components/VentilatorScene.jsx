@@ -78,7 +78,15 @@ export default function VentilatorScene({
   pressure = 15,
   onStatusChange,
 }) {
+  const safeSpo2 = Number.isFinite(spo2) ? spo2 : 95;
+  const safeRespRate = Number.isFinite(respRate) ? respRate : 12;
+  const safePeep = Number.isFinite(peep) ? peep : 5;
+  const safeFio2 = Number.isFinite(fio2) ? fio2 : 40;
+  const safeTidalVol = Number.isFinite(tidalVol) ? tidalVol : 450;
+  const safePressure = Number.isFinite(pressure) ? pressure : 15;
+
   const mountRef = useRef(null);
+  const paramsRef = useRef({ respRate: 12 });
   const stateRef = useRef({
     screen: null,
     lungs: [],
@@ -87,6 +95,13 @@ export default function VentilatorScene({
     root: null,
     loaded: "placeholder",
   });
+
+  // Track live telemetries inside ref to avoid re-initializing WebGL on vital ticks
+  useEffect(() => {
+    paramsRef.current = {
+      respRate: safeRespRate,
+    };
+  }, [safeRespRate]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -105,7 +120,6 @@ export default function VentilatorScene({
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(width, height);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
 
     const ambient = new THREE.HemisphereLight(0xdbeafe, 0x0f172a, 0.85);
@@ -182,29 +196,57 @@ export default function VentilatorScene({
       onStatusChange?.(source);
     };
 
-    const collada = new ColladaLoader();
-    collada.load(
-      MODEL_DAE,
-      (asset) => {
-        if (asset?.scene) attachModel(asset.scene, "medical-ventilator");
-      },
-      undefined,
-      () => {
+    const showPlaceholder = () => {
+      placeholder.visible = true;
+      stateRef.current.loaded = "placeholder";
+      onStatusChange?.("placeholder");
+    };
+
+    const loadGLTF = () => {
+      try {
         const gltf = new GLTFLoader();
         gltf.load(
           MODEL_GLB,
           (asset) => {
-            if (asset?.scene) attachModel(asset.scene, "ventilator-glb");
+            try {
+              if (asset?.scene) attachModel(asset.scene, "ventilator-glb");
+            } catch (err) {
+              console.warn("GLTF attach failed, using placeholder...", err);
+              showPlaceholder();
+            }
           },
           undefined,
           () => {
-            placeholder.visible = true;
-            stateRef.current.loaded = "placeholder";
-            onStatusChange?.("placeholder");
+            showPlaceholder();
           },
         );
-      },
-    );
+      } catch (err) {
+        console.warn("GLTFLoader load failed, using placeholder...", err);
+        showPlaceholder();
+      }
+    };
+
+    try {
+      const collada = new ColladaLoader();
+      collada.load(
+        MODEL_DAE,
+        (asset) => {
+          try {
+            if (asset?.scene) attachModel(asset.scene, "medical-ventilator");
+          } catch (err) {
+            console.warn("Collada attach failed, trying GLTF...", err);
+            loadGLTF();
+          }
+        },
+        undefined,
+        () => {
+          loadGLTF();
+        },
+      );
+    } catch (err) {
+      console.warn("ColladaLoader load failed, trying GLTF...", err);
+      loadGLTF();
+    }
 
     let dragging = false;
     let lastX = 0;
@@ -237,7 +279,8 @@ export default function VentilatorScene({
     const animate = () => {
       raf = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
-      const breathHz = Math.max(respRate, 8) / 60;
+      const currentRespRate = paramsRef.current.respRate;
+      const breathHz = Math.max(currentRespRate, 8) / 60;
       const breath = (Math.sin(t * breathHz * Math.PI * 2) + 1) / 2;
       const scale = 1 + breath * 0.16;
       stateRef.current.lungs.forEach((lung) => {
@@ -280,30 +323,30 @@ export default function VentilatorScene({
     const screen = stateRef.current.screen;
     if (!screen?.material?.emissive) return;
     const level = String(alertLevel || "STABLE").toUpperCase();
-    if (level === "CRITICAL" || spo2 < 88) {
+    if (level === "CRITICAL" || safeSpo2 < 88) {
       screen.material.emissive.setHex(0xef4444);
       screen.material.emissiveIntensity = 0.85;
-    } else if (level === "WARNING" || spo2 < 93) {
+    } else if (level === "WARNING" || safeSpo2 < 93) {
       screen.material.emissive.setHex(0xf59e0b);
       screen.material.emissiveIntensity = 0.7;
     } else {
       screen.material.emissive.setHex(0x2563eb);
       screen.material.emissiveIntensity = 0.45;
     }
-  }, [alertLevel, spo2]);
+  }, [alertLevel, safeSpo2]);
 
   useEffect(() => {
     onStatusChange?.(
-      `${stateRef.current.loaded} · PEEP ${peep} · FiO₂ ${fio2}% · TV ${tidalVol} mL · P ${pressure}`,
+      `${stateRef.current.loaded} · PEEP ${safePeep} · FiO₂ ${safeFio2}% · TV ${safeTidalVol} mL · P ${safePressure}`,
     );
-  }, [peep, fio2, tidalVol, pressure, onStatusChange]);
+  }, [safePeep, safeFio2, safeTidalVol, safePressure, onStatusChange]);
 
   return (
     <div className="ventilatorSceneWrap">
       <div ref={mountRef} className="ventilatorSceneMount" />
       <div className="ventilatorSceneOverlay">
-        <span>SpO₂ {Number.isFinite(spo2) ? spo2.toFixed(1) : "--"}%</span>
-        <span>RR {respRate ?? "--"} /min</span>
+        <span>SpO₂ {safeSpo2.toFixed(1)}%</span>
+        <span>RR {safeRespRate.toFixed(0)} /min</span>
         <span className={`twinAlertChip ${String(alertLevel).toLowerCase()}`}>{alertLevel}</span>
       </div>
       <p className="ventilatorSceneHint">Drag to rotate · scroll to zoom · model: medical-ventilator</p>

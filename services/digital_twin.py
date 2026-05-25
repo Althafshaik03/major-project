@@ -45,6 +45,9 @@ class DigitalTwin:
         self.last_PEEP       = 5.0
         self.last_FiO2       = 40.0
         self.last_TidalVol   = 450.0
+        self.last_RespRate   = 16.0
+        self.spo2_trend_per_step = 0.0
+        self.perfusion_factor = 1.0
         self.is_calibrated   = False
         self.uncertainty     = 1.5    # ±1 SpO2 unit default
 
@@ -60,11 +63,16 @@ class DigitalTwin:
         spo2s  = [r['SpO2'] for r in recent]
         peeps  = [r['PEEP'] for r in recent]
         fio2s  = [r['FiO2'] for r in recent]
+        resp_rates = [r.get('RespRate', self.last_RespRate) for r in recent]
+        maps = [r.get('MAP', 75.0) for r in recent]
 
         self.baseline_spo2 = float(np.mean(spo2s))
         self.last_PEEP     = float(np.mean(peeps))
         self.last_FiO2     = float(np.mean(fio2s))
         self.last_TidalVol = float(np.mean([r['TidalVol'] for r in recent]))
+        self.last_RespRate = float(np.mean(resp_rates))
+        self.spo2_trend_per_step = float((spo2s[-1] - spo2s[0]) / max(len(spo2s) - 1, 1))
+        self.perfusion_factor = float(np.clip(np.mean(maps) / 75.0, 0.75, 1.2))
 
         # Estimate compliance from SpO2 variability
         spo2_std = float(np.std(spo2s)) if len(spo2s) > 1 else 1.0
@@ -156,8 +164,14 @@ class DigitalTwin:
         spo2_now   = current_spo2
         generator = rng if rng is not None else np.random.default_rng()
 
-        for _ in range(steps):
+        trend_momentum = self.spo2_trend_per_step
+        phase_seed = (abs(int(self.stay_id or 0)) % 31) / 31.0 * 2.0 * np.pi
+        breath_period_steps = max(2.0, 60.0 / max(self.last_RespRate, 6.0))
+
+        for step in range(1, steps + 1):
             spo2_now = self._spo2_from_settings(PEEP, FiO2, TidalVol, spo2_now, weather=weather)
+            spo2_now += trend_momentum * (0.72 ** (step - 1))
+            spo2_now += 0.18 * self.perfusion_factor * np.sin(phase_seed + step / breath_period_steps)
             # Add calibration noise
             noise = float(generator.normal(0, self.uncertainty * 0.3 * noise_scale))
             trajectory.append(round(float(np.clip(spo2_now + noise, 60, 100)), 2))
@@ -178,6 +192,7 @@ class DigitalTwin:
             'mean_spo2':    round(mean_spo2, 2),
             'delta_spo2':   delta,
             'uncertainty':  round(self.uncertainty, 2),
+            'trend_per_step': round(self.spo2_trend_per_step, 3),
             'risk_flag':    risk_flag,
             'tv_risk':      tv_risk,
             'applied': {

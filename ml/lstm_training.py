@@ -112,25 +112,25 @@ def train(d: dict):
     seq_len    = d['X_train'].shape[1]
     n_features = d['X_train'].shape[2]
 
-    print(f"\n[BUILD] Bidirectional LSTM — seq={seq_len}, features={n_features}")
+    print(f"\n[BUILD] Bidirectional LSTM - seq={seq_len}, features={n_features}")
     model = build_model(seq_len, n_features)
     model.summary()
 
     model.compile(
         optimizer=optimizers.Adam(LR),
-        loss={
-            'next_spo2':    'mse',
-            'hypoxia_risk': focal_loss(gamma=FOCAL_GAMMA, alpha=FOCAL_ALPHA),
-        },
-        loss_weights={'next_spo2': 1.0, 'hypoxia_risk': 8.0},  # Increased weight for classification
-        metrics={
-            'next_spo2':    ['mae'],
-            'hypoxia_risk': [
+        loss=[
+            'mse',
+            focal_loss(gamma=FOCAL_GAMMA, alpha=FOCAL_ALPHA),
+        ],
+        loss_weights=[1.0, 8.0],
+        metrics=[
+            ['mae'],
+            [
                 tf.keras.metrics.AUC(name='auc'),
                 tf.keras.metrics.Precision(name='precision'),
                 tf.keras.metrics.Recall(name='recall'),
             ]
-        }
+        ]
     )
 
     os.makedirs(MODEL_DIR, exist_ok=True)
@@ -146,10 +146,10 @@ def train(d: dict):
     print("\n[TRAIN] Starting training ...")
     history = model.fit(
         d['X_train'],
-        {'next_spo2': d['y_reg_train'], 'hypoxia_risk': d['y_cls_train'].astype(np.float32)},
+        [d['y_reg_train'], d['y_cls_train'].astype(np.float32)],
         validation_data=(
             d['X_val'],
-            {'next_spo2': d['y_reg_val'], 'hypoxia_risk': d['y_cls_val'].astype(np.float32)}
+            [d['y_reg_val'], d['y_cls_val'].astype(np.float32)]
         ),
         sample_weight=[reg_sample_weight, cls_sample_weight],
         epochs=EPOCHS,
@@ -198,27 +198,27 @@ def evaluate(model, d: dict):
         'hypoxia_optimal_threshold':round(float(best_thresh), 2),
     }
 
-    print("\n  ── Test Results ──────────────────────────")
+    print("\n  -- Test Results --------------------------")
     for k, v in results.items():
         print(f"  {k:<35} {v}")
-    print("  ──────────────────────────────────────────")
+    print("  ------------------------------------------")
 
     os.makedirs(REPORT_DIR, exist_ok=True)
     report_path = os.path.join(REPORT_DIR, 'model_evaluation_lstm.json')
     with open(report_path, 'w') as fh:
         json.dump(results, fh, indent=2)
-    print(f"\n  Saved evaluation report → {report_path}")
+    print(f"\n  Saved evaluation report -> {report_path}")
     return results
 
 
 def main():
     print("=" * 60)
-    print("  LSTM Training — Ventilator Optimization Framework")
+    print("  LSTM Training - Ventilator Optimization Framework")
     print("=" * 60)
     d     = load_splits()
     model, history = train(d)
     results = evaluate(model, d)
-    print("\n[DONE] Model saved →", MODEL_PATH)
+    print("\n[DONE] Model saved ->", MODEL_PATH)
     return results
 
 if __name__ == '__main__':
