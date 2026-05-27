@@ -36,6 +36,12 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Cell
 } from "recharts";
 
 const TWIN_HISTORY_WINDOW = 48;
@@ -124,13 +130,13 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { ColladaLoader } from "three/examples/jsm/loaders/ColladaLoader.js";
 import { api, API_BASE } from "./api";
+import FiwarePage from "./FiwarePage";
 
 import "./styles.css";
 
 const pages = [
   { id: "live", label: "Dashboard", icon: LayoutDashboard },
-
-  { id: "fiware", label: "FIWARE Twin", icon: Wind, external: "http://localhost:8080/hub.html" },
+  { id: "fiware", label: "Digital Twin", icon: Wind },
   { id: "tests", label: "Test Cases", icon: FlaskConical },
   { id: "models", label: "Model Metrics", icon: BarChart3 },
   { id: "audit", label: "Audit", icon: ShieldCheck },
@@ -217,7 +223,7 @@ function App() {
       </aside>
       <main>
         {page === "live" && <LivePage selected={selected} setSelected={setSelected} patients={patients} />}
-
+        {page === "fiware" && <FiwarePage />}
         {page === "tests" && <TestLabPage />}
         {page === "models" && <ModelMetricsPage />}
         {page === "audit" && <AuditPage />}
@@ -1239,13 +1245,37 @@ function ModelMetricsPage() {
   const reports = evaluation.data?.reports || {};
   const dual = reports.lstm_dual_head || {};
   const multi = reports.multi_risk_lstm || {};
+  
   const regressionTargets = ["Next_SpO2", "Next_HR", "Next_MAP", "Next_RespRate", "Next_TidalVol"];
   const riskTargets = ["Hypoxia_Risk", "Tachycardia_Risk", "Hypotension_Risk", "Tachypnea_Risk", "VILI_Risk", "Shock_Risk"];
+  
   const riskChart = riskTargets.map((name) => ({
     name: name.replace("_Risk", ""),
     AUROC: Number(multi[`${name}_auroc`] || 0),
     F1: Number(multi[`${name}_f1_optimal`] || 0),
   }));
+
+  const regressionChart = regressionTargets.map((name) => ({
+    name: name.replace("Next_", ""),
+    MAE: Number(multi[`${name}_mae`] || 0),
+    RMSE: Number(multi[`${name}_rmse`] || 0),
+  }));
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{ background: '#111827', border: '1px solid rgba(148,163,184,.25)', padding: '12px', borderRadius: '8px', color: '#fff' }}>
+          <p style={{ margin: '0 0 8px', fontWeight: '600', color: '#f8fafc' }}>{label}</p>
+          {payload.map(p => (
+            <p key={p.dataKey} style={{ margin: '4px 0', fontSize: '13px', color: p.color || p.fill }}>
+              {p.name}: <strong style={{ color: '#fff' }}>{p.value.toFixed(3)}</strong>
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <>
@@ -1255,54 +1285,104 @@ function ModelMetricsPage() {
         description="A focused view of the saved model reports: regression error for next vitals and classifier quality for each risk head."
         actions={<Button onClick={evaluation.reload}><RefreshCw size={16} /> Refresh</Button>}
       />
+      
       {evaluation.loading ? <LoadingBlock label="Loading metrics" /> : (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
           <section className="grid four">
             <Metric label="Dual SpO2 MAE" value={fmt(dual.next_spo2_mae, 3)} />
             <Metric label="Dual SpO2 RMSE" value={fmt(dual.next_spo2_rmse, 3)} />
             <Metric label="Hypoxia AUROC" value={fmt(dual.hypoxia_auroc, 3)} tone="good" />
             <Metric label="VILI Best F1" value={fmt(multi.VILI_Risk_f1_optimal, 3)} tone="good" />
           </section>
+
           <section className="grid two">
             <div className="panel">
-              <h2>Multi-Risk Classification</h2>
-              <ResponsiveContainer width="100%" height={310}>
-                <BarChart data={riskChart}>
-                  <CartesianGrid stroke="rgba(148,163,184,.16)" vertical={false} />
-                  <XAxis dataKey="name" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" domain={[0, 1]} />
-                  <Tooltip contentStyle={{ background: "#111827", border: "1px solid rgba(148,163,184,.25)", borderRadius: 8 }} />
-                  <Bar dataKey="AUROC" fill="#34d399" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="F1" fill="#38bdf8" radius={[4, 4, 0, 0]} />
+              <h2><Database size={18} style={{ verticalAlign: 'text-bottom', marginRight: '6px', color: '#38bdf8' }}/> Classification Quality (AUROC vs F1)</h2>
+              <ResponsiveContainer width="100%" height={320}>
+                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={riskChart}>
+                  <PolarGrid stroke="rgba(148,163,184,.2)" />
+                  <PolarAngleAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 1]} tick={{ fill: '#475569', fontSize: 10 }} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                  <Radar name="AUROC" dataKey="AUROC" stroke="#34d399" fill="#34d399" fillOpacity={0.4} />
+                  <Radar name="F1 Score" dataKey="F1" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.4} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="panel">
+              <h2><Activity size={18} style={{ verticalAlign: 'text-bottom', marginRight: '6px', color: '#fbbf24' }}/> Regression Error (MAE & RMSE)</h2>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={regressionChart} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                  <CartesianGrid stroke="rgba(148,163,184,.16)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 12 }} />
+                  <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }} />
+                  <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                  <Bar dataKey="MAE" fill="#34d399" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="RMSE" fill="#38bdf8" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="panel">
-              <h2>Dual-Head LSTM</h2>
-              <div className="table">
-                <div><span>Next SpO2 MAE</span><strong>{fmt(dual.next_spo2_mae, 4)}</strong></div>
-                <div><span>Next SpO2 RMSE</span><strong>{fmt(dual.next_spo2_rmse, 4)}</strong></div>
-                <div><span>Hypoxia AUROC</span><strong>{fmt(dual.hypoxia_auroc, 4)}</strong></div>
-                <div><span>Average Precision</span><strong>{fmt(dual.hypoxia_avg_prec, 4)}</strong></div>
-                <div><span>F1 @ 0.5</span><strong>{fmt(dual.hypoxia_f1_thresh05, 4)}</strong></div>
-              </div>
-            </div>
           </section>
+
           <section className="grid two">
             <div className="panel">
-              <h2>Next Vital Regression</h2>
+              <h2>Next Vital Regression Profile</h2>
               <div className="table">
-                {regressionTargets.map((t) => <div key={t}><span>{t}</span><strong>MAE {fmt(multi[`${t}_mae`], 3)} | RMSE {fmt(multi[`${t}_rmse`], 3)}</strong></div>)}
+                {regressionTargets.map((t) => (
+                  <div key={t}>
+                    <span>{t.replace("Next_", "")}</span>
+                    <strong>MAE {fmt(multi[`${t}_mae`], 3)} <span style={{ color: '#475569', margin: '0 8px' }}>|</span> RMSE {fmt(multi[`${t}_rmse`], 3)}</strong>
+                  </div>
+                ))}
               </div>
             </div>
+
             <div className="panel">
-              <h2>Risk Thresholds</h2>
+              <h2>Risk Threshold Configurations</h2>
               <div className="table">
-                {riskTargets.map((t) => <div key={t}><span>{t}</span><strong>AUROC {fmt(multi[`${t}_auroc`], 3)} | F1 {fmt(multi[`${t}_f1_optimal`], 3)} @ {fmt(multi[`${t}_optimal_threshold`], 2)}</strong></div>)}
+                {riskTargets.map((t) => (
+                  <div key={t}>
+                    <span>{t.replace("_Risk", "")}</span>
+                    <strong>AUROC {fmt(multi[`${t}_auroc`], 3)} <span style={{ color: '#475569', margin: '0 8px' }}>|</span> Opt. Thresh {fmt(multi[`${t}_optimal_threshold`], 2)}</strong>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
-        </>
+
+          <section className="grid one">
+            <div className="panel">
+              <h2>Dual-Head Baseline Reference</h2>
+              <div className="table" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', background: 'transparent' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px' }}>
+                  <span style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}>Hypoxia AUROC</span>
+                  <strong style={{ fontSize: '18px', color: '#34d399' }}>{fmt(dual.hypoxia_auroc, 4)}</strong>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px' }}>
+                  <span style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}>Average Precision</span>
+                  <strong style={{ fontSize: '18px', color: '#38bdf8' }}>{fmt(dual.hypoxia_avg_prec, 4)}</strong>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px' }}>
+                  <span style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}>F1 @ 0.5 Threshold</span>
+                  <strong style={{ fontSize: '18px', color: '#a78bfa' }}>{fmt(dual.hypoxia_f1_thresh05, 4)}</strong>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px' }}>
+                  <span style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}>Next SpO2 MAE</span>
+                  <strong style={{ fontSize: '18px', color: '#fbbf24' }}>{fmt(dual.next_spo2_mae, 4)}</strong>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px' }}>
+                  <span style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}>Next SpO2 RMSE</span>
+                  <strong style={{ fontSize: '18px', color: '#f87171' }}>{fmt(dual.next_spo2_rmse, 4)}</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
       )}
     </>
   );
@@ -1310,12 +1390,13 @@ function ModelMetricsPage() {
 
 function AuditPage() {
   const audit = useAsync(async () => {
-    const [verify, health, fiware] = await Promise.all([
+    const [verify, health, fiware, feed] = await Promise.all([
       api.auditVerify(),
       api.health(),
       api.fiware().catch(() => ({ enabled: false, health: { reachable: false } })),
+      api.auditFeed().catch(() => ({ trail: [] }))
     ]);
-    return { verify, health, fiware };
+    return { verify, health, fiware, feed };
   }, []);
   const data = audit.data || {};
 
@@ -1339,6 +1420,31 @@ function AuditPage() {
             <JsonPanel title="Audit Verification" data={data.verify} icon={Link2} />
             <JsonPanel title="API Health" data={data.health} icon={Server} />
           </section>
+          
+          <h2 style={{ marginTop: '32px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Link2 size={18} /> Live Blockchain Audit Feed
+          </h2>
+          <div className="panel" style={{ maxHeight: '500px', overflowY: 'auto', background: '#0a101d', border: '1px solid #1e293b' }}>
+            {data.feed?.trail?.length > 0 ? (
+              data.feed.trail.map((block, i) => (
+                <div key={i} style={{ padding: '12px', borderBottom: '1px solid #1e293b', fontFamily: 'monospace' }}>
+                  <div style={{ color: '#38bdf8', fontWeight: 'bold', marginBottom: '4px' }}>
+                    [BLOCK #{block.block_id}] {block.event_type} — {new Date(block.timestamp).toLocaleString()}
+                  </div>
+                  <div style={{ color: '#94a3b8', fontSize: '11px', marginBottom: '8px' }}>
+                    Chain Hash: {block.chain_hash}
+                    <br/>
+                    Payload Hash: {block.payload_hash}
+                  </div>
+                  <pre style={{ margin: 0, padding: '8px', background: '#0f172a', borderRadius: '4px', color: '#e2e8f0', fontSize: '11px', overflowX: 'auto' }}>
+                    {block.payload_json}
+                  </pre>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: '24px', color: '#64748b' }}>No blocks found or syncing...</div>
+            )}
+          </div>
         </>
       )}
     </>

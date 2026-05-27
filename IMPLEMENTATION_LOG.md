@@ -25,7 +25,7 @@ This section is the active project tracker. It is updated during implementation 
 - [x] Phase 3 — LSTM Forecasting Engine (`ml/lstm_training.py`, `services/lstm_inference.py`, `ml/multi_risk_training.py`, `reports/model-evaluation-lstm.md`, `reports/model_evaluation_lstm.json`)
 - [x] Phase 4 — PPO Optimization Agent (`services/ppo_policy.py` rule layer + `ml/ppo_training.py` SB3 trainer with `VentilatorTwinEnv`, `reports/model-evaluation-ppo.md`)
 - [x] Phase 5 — Blockchain Trust and Audit Layer (off-chain hash chain in `services/audit_bridge.py` + on-chain anchor in `blockchain/contracts/AuditAnchor.sol` + Python bridge in `services/chain_anchor.py`, `/audit/anchor` endpoint, Hardhat tests under `blockchain/test/`)
-- [x] Phase 6 — Integration and Real-Time Dashboard (`api/main.py` end-to-end pipeline, `frontend/dashboard/index.html`, Prometheus metrics in `services/prometheus_metrics.py`, Grafana provisioning under `deploy/grafana/`)
+- [x] Phase 6 — Integration and Real-Time Dashboard (`api/main.py` end-to-end pipeline, `frontend/app/`, Prometheus metrics in `services/prometheus_metrics.py`, Grafana provisioning under `deploy/grafana/`)
 - [x] Phase 7 — Validation, Benchmarking, and Hardening (`reports/benchmark-results.md`, `reports/ablation-study.md`, `docs/failure-recovery.md`, `pipelines/historical_replay_benchmark.py`)
 - [ ] Phase 8 — Final Packaging (in progress: report PDF via `docs/build_project_report.py`, presentation in `docs/presentation/`, demo runbook in `docs/demo-runbook.md`, viva prep in `docs/viva_prep.md`)
 
@@ -678,7 +678,7 @@ The project is successful when all of the following are achieved:
 ### Deliverables
 
 - `deploy/docker-compose.yml` or K8s manifests.
-- `frontend/dashboard/`
+- `frontend/app/`
 - `docs/integration-architecture.md`
 
 ### Exit Criteria

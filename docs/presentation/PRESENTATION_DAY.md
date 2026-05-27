@@ -147,13 +147,10 @@ curl http://127.0.0.1:8000/health
 ### Step 3. Open the dashboard
 
 ```powershell
-# Easiest: open the static file directly in Edge/Chrome
-Start-Process .\frontend\dashboard\index.html
-
-# If browser blocks file:// — serve it instead (Terminal 3)
-cd .\frontend\dashboard
-python -m http.server 8080
-# then open http://127.0.0.1:8080
+# Open a terminal in frontend/app and run Vite
+cd .\frontend\app
+npm run dev
+# then open http://127.0.0.1:5173
 ```
 
 ### Step 4. Scenario 1 — Predictive Save (4 min)
@@ -368,7 +365,8 @@ python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 
 ### Dashboard
 ```powershell
-Start-Process .\frontend\dashboard\index.html
+cd .\frontend\app
+npm run dev
 ```
 
 ### Tests
@@ -463,7 +461,7 @@ panic, don't fight the laptop on stage:
 
 - [ ] Laptop fully charged + power adapter in bag
 - [ ] HDMI / USB-C dongle for projector
-- [ ] Two browser windows pre-opened: `index.html` and `localhost:8000/docs`
+- [ ] Two browser windows pre-opened: `127.0.0.1:5173` and `localhost:8000/docs`
 - [ ] Three PowerShell windows ready (one for API, two free)
 - [ ] This file (`PRESENTATION_DAY.md`) open on phone or second monitor
 - [ ] `docs/presentation/slides_notes.md` open for slide narration

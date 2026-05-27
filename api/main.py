@@ -335,6 +335,7 @@ async def twin_replay(payload: Dict[str, Any]):
     proposed = payload.get("proposed", {})
     history = payload.get("history", [])
     current_spo2 = payload.get("current_spo2")
+    weather_dict = payload.get("weather")
 
     if steps < 1 or steps > 96:
         raise HTTPException(status_code=400, detail="steps must be between 1 and 96")
@@ -366,6 +367,15 @@ async def twin_replay(payload: Dict[str, Any]):
 
     twin = DigitalTwin(stay_id=stay_id)
     try:
+        from services.weather import WeatherState
+        weather_obj = None
+        if weather_dict and isinstance(weather_dict, dict):
+            weather_obj = WeatherState(
+                temperature_c=float(weather_dict.get("temperature_c", 24.0)),
+                humidity_pct=float(weather_dict.get("humidity_pct", 55.0)),
+                pressure_hpa=float(weather_dict.get("pressure_hpa", 1013.25)),
+            )
+
         twin.calibrate(history)
         rng = np.random.default_rng(int(seed)) if seed is not None else None
         result = twin.simulate(
@@ -374,6 +384,7 @@ async def twin_replay(payload: Dict[str, Any]):
             steps=steps,
             noise_scale=noise_scale,
             rng=rng,
+            weather=weather_obj,
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=f"Invalid twin replay payload: {exc}") from exc
@@ -606,6 +617,8 @@ async def predict_clinical_risks(stay_id: int, payload: Dict[str, Any]):
                 "model": "multi_risk_lstm",
                 "high_risk_flags": response["summary"]["high_risk_flags"],
                 "next_spo2": response["summary"]["next_spo2"],
+                "regression_predictions": response["predictions"]["regression"],
+                "classification_predictions": response["predictions"]["classification"]
             },
             actor="SYSTEM_MULTI_RISK"
         )
@@ -688,6 +701,11 @@ async def log_clinician_action(stay_id: int, payload: Dict[str, Any]):
 @app.get("/patient/{stay_id}/audit_trail")
 async def get_audit_trail(stay_id: int):
     return {"trail": audit_bridge.get_trail(str(stay_id))}
+
+@app.get("/audit/feed")
+async def get_audit_feed():
+    """Global feed of the most recent blockchain audit events."""
+    return {"trail": audit_bridge.get_all(limit=20)}
 
 @app.get("/audit/verify")
 async def verify_chain():

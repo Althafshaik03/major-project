@@ -537,7 +537,7 @@
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0xf4f8fb);
       camera = new THREE.PerspectiveCamera(50, mount.clientWidth / mount.clientHeight, 0.1, 1000);
-      camera.position.set(6, 4.2, 7);
+      camera.position.set(3, 2.5, 5);
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(mount.clientWidth, mount.clientHeight);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -698,6 +698,7 @@
       bellows.scale.y = .8 + breath * .45;
       fan.rotation.z = t * 3.5;
       root.rotation.y += state.micro ? 0.001 : 0;
+      camera.lookAt(0, -0.2, 0);
       renderer.render(scene, camera);
       positionLabels();
     }
@@ -839,13 +840,13 @@
     });
     el("macroBtn").addEventListener("click", () => {
       state.micro = false;
-      camera.position.set(6, 4.2, 7);
+      camera.position.set(3, 2.5, 5);
       el("macroBtn").classList.add("primary");
       el("microBtn").classList.remove("primary");
     });
     el("resetBtn").addEventListener("click", () => {
       root.rotation.set(0, 0, 0);
-      camera.position.set(6, 4.2, 7);
+      camera.position.set(3, 2.5, 5);
     });
 
     setInterval(() => el("clock").textContent = new Date().toLocaleTimeString(), 1000);

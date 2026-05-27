@@ -1,4 +1,4 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+export const API_BASE = import.meta.env.VITE_API_BASE || `http://${window.location.hostname}:8000`;
 
 async function request(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -30,6 +30,7 @@ export const api = {
   scenarios: () => request("/tests/run-scenarios"),
   evaluation: () => request("/model/evaluation"),
   auditVerify: () => request("/audit/verify"),
+  auditFeed: () => request("/audit/feed"),
   auditTrail: (stayId) => request(`/patient/${stayId}/audit_trail`),
   auditAction: (stayId, payload) =>
     request(`/patient/${stayId}/audit`, { method: "POST", body: JSON.stringify(payload) }),

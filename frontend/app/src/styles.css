@@ -449,3 +449,405 @@ pre {
   .pageHeader, .liveGrid, .split, .grid.two, .grid.three, .grid.four, .scenarioGrid, .dualTables,
   .twinWorkspace, .twinRelevanceGrid { grid-template-columns: 1fr; }
 }
+
+/* ────────────────────────────────────────────────────────── */
+/* DIGITAL TWIN DASHBOARD: CYBERPUNK OVERHAUL                  */
+/* ────────────────────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap");
+
+:root {
+  --cy-primary: #00f0ff;
+  --cy-secondary: #ff0055;
+  --cy-accent: #7000ff;
+  --cy-bg: #050b14;
+  --cy-glass: rgba(10, 20, 40, 0.45);
+  --cy-glass-border: rgba(0, 240, 255, 0.25);
+  --cy-success: #00ff9d;
+  --cy-warning: #ffb700;
+  --cy-danger: #ff0055;
+}
+
+.fiware-twin-dashboard {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 120px);
+  background: var(--cy-bg);
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.1), transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(255, 0, 85, 0.08), transparent 50%);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 40px rgba(0,0,0,0.8), inset 0 0 20px rgba(0, 240, 255, 0.05);
+  font-family: 'Outfit', sans-serif;
+  color: #e2f1ff;
+}
+
+.fiware-3d-container {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.fiware-ui-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  pointer-events: none; /* Let clicks pass to 3D canvas */
+}
+
+.fiware-header {
+  pointer-events: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--cy-glass);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--cy-glass-border);
+  border-bottom: 2px solid var(--cy-primary);
+  padding: 16px 32px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.fiware-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.fiware-title h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.fiware-title span {
+  font-size: 11px;
+  color: var(--cy-primary);
+  font-weight: 800;
+  letter-spacing: 2px;
+  background: rgba(0, 240, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+}
+
+.glow-icon {
+  color: var(--cy-primary);
+  filter: drop-shadow(0 0 10px var(--cy-primary));
+}
+
+.fiware-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid;
+  background: rgba(0,0,0,0.5);
+  box-shadow: 0 0 15px currentColor;
+  letter-spacing: 1px;
+}
+
+.pulse-icon {
+  animation: pulse 2s infinite;
+}
+.pulse-icon-fast {
+  animation: pulse 0.6s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; transform: scale(1); filter: brightness(1); }
+  50% { opacity: 0.3; transform: scale(0.8); filter: brightness(1.5); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+}
+
+/* Fix pointer events for grid! */
+.fiware-grid {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  pointer-events: none; /* Crucial: allow clicks to pass through empty space */
+}
+
+.fiware-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 320px;
+  pointer-events: none; /* Let children handle events */
+}
+
+/* Make actual cards clickable */
+.fiware-glass-card {
+  pointer-events: auto;
+  background: var(--cy-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--cy-glass-border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fiware-glass-card:hover {
+  border-color: rgba(0, 240, 255, 0.6);
+  box-shadow: 0 10px 40px rgba(0, 240, 255, 0.15), inset 0 0 20px rgba(0, 240, 255, 0.05);
+  transform: translateY(-2px);
+}
+
+.fiware-glass-card h3 {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  color: var(--cy-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.fiware-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+}
+
+.fiware-metric:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.fiware-metric .label {
+  font-size: 14px;
+  color: #88a3b8;
+  font-weight: 600;
+}
+
+.fiware-metric .value {
+  font-size: 20px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.risk-display {
+  font-size: 42px;
+  font-weight: 900;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  margin: 10px 0;
+  text-shadow: 0 0 20px currentColor;
+}
+
+.risk-bar-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 10px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.risk-bar {
+  height: 100%;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s ease;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.chart-card {
+  padding: 16px 20px 12px;
+}
+
+.chart-card h3 {
+  margin-bottom: 12px;
+}
+
+.fiware-center-rail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  pointer-events: none;
+}
+
+.fiware-controls-panel {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 900px; /* Wider to accommodate more columns */
+  background: linear-gradient(180deg, rgba(5, 15, 35, 0.7) 0%, rgba(5, 15, 35, 0.95) 100%);
+  border: 1px solid var(--cy-glass-border);
+  border-top: 2px solid var(--cy-primary);
+  margin-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  padding: 16px 24px; /* Slightly less vertical padding */
+  box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 columns instead of 2 for compactness */
+  gap: 16px 24px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Tighter gap */
+}
+
+.control-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.control-header span {
+  color: #a4c8e1;
+}
+
+.control-header strong {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--cy-primary);
+  text-shadow: 0 0 8px var(--cy-primary);
+}
+
+.fiware-twin-dashboard input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 4px;
+  outline: none;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  box-shadow: inset 0 0 10px rgba(0,0,0,1);
+}
+
+.fiware-twin-dashboard input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--cy-primary);
+  cursor: pointer;
+  box-shadow: 0 0 15px var(--cy-primary), inset 0 0 5px #fff;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fiware-twin-dashboard input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+  background: #fff;
+}
+
+.fiware-action-btn {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+}
+
+.fiware-action-btn.primary {
+  border-color: var(--cy-primary);
+  background: rgba(0, 240, 255, 0.1);
+  color: var(--cy-primary);
+  box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1);
+}
+.fiware-action-btn.primary:hover {
+  background: var(--cy-primary);
+  color: #000;
+  box-shadow: 0 0 20px var(--cy-primary);
+}
+
+.fiware-action-btn.danger {
+  border-color: var(--cy-secondary);
+  background: rgba(255, 0, 85, 0.1);
+  color: var(--cy-secondary);
+  box-shadow: inset 0 0 10px rgba(255, 0, 85, 0.1);
+}
+.fiware-action-btn.danger:hover {
+  background: var(--cy-secondary);
+  color: #fff;
+  box-shadow: 0 0 20px var(--cy-secondary);
+}
+
+.terminal-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-window {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--cy-glass-border);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'JetBrains Mono', Courier, monospace;
+  font-size: 12px;
+  color: #00f0ff;
+  overflow-y: auto;
+  max-height: 200px;
+  box-shadow: inset 0 0 20px rgba(0,0,0,1);
+}
+
+.terminal-line {
+  margin-bottom: 6px;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+.terminal-line:last-child {
+  margin-bottom: 0;
+  opacity: 1;
+  text-shadow: 0 0 5px #00f0ff;
+}
+
+/* Custom Scrollbar for Terminal */
+.terminal-window::-webkit-scrollbar {
+  width: 6px;
+}
+.terminal-window::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.5);
+}
+.terminal-window::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.3);
+  border-radius: 3px;
+}
+.terminal-window::-webkit-scrollbar-thumb:hover {
+  background: var(--cy-primary);
+}

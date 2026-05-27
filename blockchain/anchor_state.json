@@ -1,0 +1,14 @@
+{
+  "last_anchored_block_id": 1024,
+  "last_chain_hash": "0x22b2434950c0bd328c318b97ce3cd133e689ae1f4ac426647b80e4c4d4fa471f",
+  "anchors": [
+    {
+      "from_block_id": 1,
+      "to_block_id": 1024,
+      "chain_hash": "0x22b2434950c0bd328c318b97ce3cd133e689ae1f4ac426647b80e4c4d4fa471f",
+      "payload_root": "0x6c35a2c41384be0c6cdd39d59c62eefb6bc90ad0b88ba7e719a9fa96599f7988",
+      "mode": "dry_run",
+      "receipt": null
+    }
+  ]
+}

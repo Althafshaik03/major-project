@@ -102,19 +102,19 @@ The API exposes Prometheus text on **`GET /metrics`** (gauges updated on each **
 
 ## 3. Run the dashboard (frontend)
 
-The dashboard is a static page that talks to the API at **http://localhost:8000**.
+The dashboard is a React app that talks to the API at **http://localhost:8000**.
 
 1. Start the API (section 2).  
-2. Open `frontend/dashboard/index.html` in your browser (Chrome or Edge).
-
-If the browser blocks requests from `file://`, serve the folder:
+2. Open a terminal in `frontend/app`.
+3. Install dependencies and start the dev server:
 
 ```powershell
-cd "path\to\Major Project\frontend\dashboard"
-python -m http.server 8080
+cd "path\to\Major Project\frontend\app"
+npm install
+npm run dev
 ```
 
-Then open http://127.0.0.1:8080 — keep the API on port **8000**.
+Then open http://127.0.0.1:5173 — keep the API on port **8000**.
 
 ## 4. Phase 1 pipeline (synthetic data + features)
 
@@ -162,7 +162,7 @@ On Windows PowerShell you can use `Invoke-RestMethod` instead of `curl` if prefe
 | `ModuleNotFoundError: No module named 'services'` | Run uvicorn from the **project root**, not from inside `api/`. |
 | `ModuleNotFoundError: No module named 'fastapi'` | Run section 1 installs again. |
 | Browser or health check **times out** on `/docs` | Wait for startup to finish (large CSV); retry with a longer timeout (e.g. 30–120 s). |
-| Port 8000 in use | Change port: `python -m uvicorn api.main:app --host 0.0.0.0 --port 8001` and update `API_BASE` in `frontend/dashboard/index.html` to match. |
+| Port 8000 in use | Change port: `python -m uvicorn api.main:app --host 0.0.0.0 --port 8001` and update `API_BASE` in `frontend/app/src/api.js` to match. |
 
 ## Related docs
 
