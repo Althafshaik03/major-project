@@ -1,0 +1,18 @@
+::ffff:127.0.0.1 - - [25/May/2026 15:34:35] "GET /hub.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 15:34:35] "GET /fiware-theme.css HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 15:34:35] "GET /fiware-common.js HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 15:34:37] "GET /hub.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 15:34:38] "GET /fiware-theme.css HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 15:34:38] "GET /fiware-common.js HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 15:34:38] code 404, message File not found
+::ffff:127.0.0.1 - - [25/May/2026 15:34:39] "GET /favicon.ico HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [25/May/2026 20:50:55] "GET / HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 20:50:57] code 404, message File not found
+::ffff:127.0.0.1 - - [25/May/2026 20:50:57] "GET /favicon.ico HTTP/1.1" 404 -
+::ffff:127.0.0.1 - - [25/May/2026 20:50:57] "GET /assets/medical-ventilator/model/Ventilator.dae HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 20:51:14] "GET /intelligence.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 20:51:14] "GET /fiware-common.js HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 20:51:14] "GET /fiware-theme.css HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 20:51:25] "GET /sandbox.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 21:27:48] "GET /hub.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [25/May/2026 21:27:55] "GET /index.html HTTP/1.1" 200 -
