@@ -2,7 +2,11 @@ export const API_BASE = import.meta.env.VITE_API_BASE || `http://${window.locati
 
 async function request(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: { 
+      "Content-Type": "application/json", 
+      "Bypass-Tunnel-Reminder": "true",
+      ...(options.headers || {}) 
+    },
     ...options,
   });
   if (!res.ok) {
