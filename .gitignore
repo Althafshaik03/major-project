@@ -87,3 +87,5 @@ ssh_tunnel.txt
 tunnel_url.txt
 .run-logs/
 .sixth/
+
+!README.md
