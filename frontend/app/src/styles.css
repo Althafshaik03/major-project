@@ -851,3 +851,33 @@ pre {
 .terminal-window::-webkit-scrollbar-thumb:hover {
   background: var(--cy-primary);
 }
+
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 900px) {
+  .cy-app-container {
+    padding: 10px;
+    height: auto;
+    overflow-y: auto;
+  }
+  .cy-header {
+    flex-direction: column;
+    height: auto;
+    padding: 15px;
+    gap: 15px;
+  }
+  .cy-dashboard-grid, .cy-digital-twin-grid, .cy-test-cases-grid, .fiware-twin-dashboard {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .cy-vitals-grid, .cy-model-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  .cy-panel {
+    min-height: 250px;
+  }
+  .cy-nav-tabs {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
