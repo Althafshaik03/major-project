@@ -75,3 +75,15 @@ temp/
 
 # Legacy nested project folder (kept locally for data/venv, not for git)
 /Major Project/
+
+# Unnecessary project assets / deployment exclusions
+papers/
+poster/
+reports/
+medical-ventilator/
+ventilator-twin/
+csv_files/
+ssh_tunnel.txt
+tunnel_url.txt
+.run-logs/
+.sixth/

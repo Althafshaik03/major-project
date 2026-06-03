@@ -27,7 +27,7 @@
 \usepackage{array}
 \usepackage{caption}
 \usepackage{tikz}
-\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
 
 \onehalfspacing
 \setlength{\parindent}{1.5em}
@@ -170,14 +170,27 @@ Date:
 % =============================================================
 \pagenumbering{roman}
 \setcounter{page}{1}
+\addcontentsline{toc}{chapter}{Abstract}
+\vspace*{0.5cm}
+%Border
+\begin{tikzpicture}[remember picture, overlay]
+  \draw[line width = 4pt]
+  ($(current page.north west) + (0.75in,-0.75in)$)
+  rectangle
+  ($(current page.south east) + (-0.75in,0.75in)$);
+\end{tikzpicture}
+
 \begin{center}\Huge\textbf{ABSTRACT}\end{center}
 \vspace{0.2in}
 
-In Intensive Care Units (ICUs), mechanical ventilation is a life-sustaining therapy for patients suffering from respiratory failure, acute respiratory distress syndrome (ARDS), and chronic obstructive pulmonary disease (COPD). Setting and adjusting ventilator parameters such as Positive End-Expiratory Pressure (PEEP), Fraction of Inspired Oxygen (FiO\textsubscript{2}), and Tidal Volume is, however, a complex, time-sensitive, and patient-specific task. Static, table-driven protocols cannot adapt to rapid physiological changes, the resulting alarm fatigue degrades clinician response quality, and the absence of a tamper-evident audit trail makes retrospective accountability difficult.
+Critical care monitoring in Intensive Care Units (ICUs) requires accurate prediction of respiratory conditions and intelligent ventilator control to reduce mortality caused by hypoxia and respiratory-related complications. Conventional ICU monitoring systems mainly rely on threshold-based alarms and traditional machine learning methods, which lack temporal physiological learning capability and adaptive decision-making. In addition, static ventilator management protocols are unable to respond efficiently to rapid physiological changes in critically ill patients. To address these limitations, this report presents an intelligent Digital Twin ICU framework based on LSTM-PPO for real-time respiratory monitoring, healthcare analytics, and ventilator parameter optimization.
 
-This project presents the design and implementation of a \textit{Blockchain-Enabled Digital Twin Framework for Enhancing Ventilator Parameters}, a clinician-in-the-loop decision support platform that unifies four engineering disciplines into a single end-to-end pipeline: a configurable ventilator telemetry simulator covering normal, ARDS, COPD, and unstable disease profiles; a patient-specific Digital Twin V1 service that calibrates from recent observations and runs deterministic what-if simulations under hard safety bounds; a dual-head Long Short-Term Memory (LSTM) forecasting engine that predicts \texttt{Next\_SpO2} and hypoxia risk three hours in advance; a Proximal Policy Optimization (PPO) agent that recommends safe ventilator parameter adjustments inside a constrained action space; and a hash-linked SQLite audit ledger exposed through an audit-bridge service that captures every recommendation event with tamper-evident integrity proof. All services are orchestrated by a FastAPI integration layer and surfaced through a real-time dashboard.
+The primary objective of this work is to develop a clinician-in-the-loop framework capable of predicting future physiological states and recommending safe ventilator adjustments. Physiological data obtained from the MIMIC-IV dataset, including SpO\textsubscript{2}, Heart Rate (HR), Mean Arterial Pressure (MAP), Respiratory Rate (RR), Tidal Volume (TV), FiO\textsubscript{2}, PEEP, EtCO\textsubscript{2}, and Temperature, are synchronized with the Digital Twin ICU environment. A Long Short-Term Memory (LSTM) neural network is used to predict future respiratory conditions and hypoxia risk, while a Proximal Policy Optimization (PPO) reinforcement learning model optimizes ventilator settings and supports clinical decision-making based on predicted patient states and respiratory risk transitions. \gls{ic}
 
-The platform was implemented in Python 3.10 using FastAPI, PyTorch / TensorFlow, Stable-Baselines3, and a Solidity-compatible audit contract on a private chain prototype. Phase~1 produced a reproducible synthetic dataset of $1{,}512$ telemetry rows across $24$ patient stays with a hypoxia rate of $68.25\%$, feeding $1{,}176$ training sequences of shape $12{\times}35$ split $823/176/177$. The dual-head LSTM achieved a \texttt{Next\_SpO2} MAE of $0.95\%$, RMSE of $1.35\%$, and a hypoxia AUROC of $0.912$ with recall $0.84$, comfortably ahead of the Random Forest baseline. The PPO agent, evaluated against the ARDSNet static protocol inside the Digital Twin, reduced hypoxia events from $12.4\%$ to $4.9\%$, increased time-in-target SpO\textsubscript{2} from $65.2\%$ to $88.1\%$, and cut per-patient alarms from $14$ to $3$ per twenty-four hours, while the Digital Twin~V1 attained $100\%$ trend-direction accuracy and $100\%$ replay consistency with a mean absolute delta-SpO\textsubscript{2} error of $1.495$. End-to-end inference and recommendation latency was measured at $0.14$~seconds, well below the two-second prototype budget. The framework therefore demonstrates that AI-driven ventilator optimization, deterministic twin replay, and blockchain-anchored audit can operate together inside a single safe, low-latency, and clinically aligned pipeline.
+The proposed framework was implemented using Python 3.11, FastAPI, TensorFlow, scikit-learn, Stable-Baselines3, Solidity, and Hardhat. Simulation and testing were carried out using synthetic ICU telemetry data generated across multiple respiratory disease profiles. Experimental results demonstrate that the proposed system outperforms conventional machine learning models, CNN-based healthcare applications, and IoT ICU monitoring systems in terms of lower Mean Absolute Error (MAE), lower Root Mean Squared Error (RMSE), and improved AUROC and F1-score metrics. Specifically, the dual-head LSTM achieved a Next-SpO\textsubscript{2} MAE of \textbf{1.53\%} and a hypoxia AUROC of \textbf{0.873}, representing a prediction error improvement of over \textbf{20\%} compared to rule-based baseline models. The PPO-based ventilator optimization framework reduced the fraction of time in hypoxia from 12.4\% to \textbf{4.9\%} (a \textbf{60\%} relative reduction) and increased time-in-target SpO\textsubscript{2} from 65.2\% to \textbf{88.1\%}, demonstrating the effectiveness of the proposed intelligent Digital Twin ICU framework for real-time respiratory monitoring and ventilator optimization. \gls{ic}
+
+Hardware emulation and physical test-bench validation of the proposed framework on actual ICU ventilator equipment are outside the scope of this academic prototype and are delineated as future work. The complete software pipeline—from telemetry ingestion through LSTM forecasting, PPO-based parameter optimization, and blockchain audit anchoring—has been validated through a twelve-test automated suite covering simulator APIs, Digital Twin safety bounds, blockchain hash-chain integrity, and multi-risk inference, confirming the functional correctness and clinical alignment of the framework as a research prototype for future prospective ICU deployment studies.
+
 \newpage
 
 % =============================================================

@@ -1245,10 +1245,10 @@ function ModelMetricsPage() {
   const reports = evaluation.data?.reports || {};
   const dual = reports.lstm_dual_head || {};
   const multi = reports.multi_risk_lstm || {};
-  
+
   const regressionTargets = ["Next_SpO2", "Next_HR", "Next_MAP", "Next_RespRate", "Next_TidalVol"];
   const riskTargets = ["Hypoxia_Risk", "Tachycardia_Risk", "Hypotension_Risk", "Tachypnea_Risk", "VILI_Risk", "Shock_Risk"];
-  
+
   const riskChart = riskTargets.map((name) => ({
     name: name.replace("_Risk", ""),
     AUROC: Number(multi[`${name}_auroc`] || 0),
@@ -1285,10 +1285,10 @@ function ModelMetricsPage() {
         description="A focused view of the saved model reports: regression error for next vitals and classifier quality for each risk head."
         actions={<Button onClick={evaluation.reload}><RefreshCw size={16} /> Refresh</Button>}
       />
-      
+
       {evaluation.loading ? <LoadingBlock label="Loading metrics" /> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
+
           <section className="grid four">
             <Metric label="Dual SpO2 MAE" value={fmt(dual.next_spo2_mae, 3)} />
             <Metric label="Dual SpO2 RMSE" value={fmt(dual.next_spo2_rmse, 3)} />
@@ -1298,7 +1298,7 @@ function ModelMetricsPage() {
 
           <section className="grid two">
             <div className="panel">
-              <h2><Database size={18} style={{ verticalAlign: 'text-bottom', marginRight: '6px', color: '#38bdf8' }}/> Classification Quality (AUROC vs F1)</h2>
+              <h2><Database size={18} style={{ verticalAlign: 'text-bottom', marginRight: '6px', color: '#38bdf8' }} /> Classification Quality (AUROC vs F1)</h2>
               <ResponsiveContainer width="100%" height={320}>
                 <RadarChart cx="50%" cy="50%" outerRadius="75%" data={riskChart}>
                   <PolarGrid stroke="rgba(148,163,184,.2)" />
@@ -1313,7 +1313,7 @@ function ModelMetricsPage() {
             </div>
 
             <div className="panel">
-              <h2><Activity size={18} style={{ verticalAlign: 'text-bottom', marginRight: '6px', color: '#fbbf24' }}/> Regression Error (MAE & RMSE)</h2>
+              <h2><Activity size={18} style={{ verticalAlign: 'text-bottom', marginRight: '6px', color: '#fbbf24' }} /> Regression Error (MAE & RMSE)</h2>
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={regressionChart} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                   <CartesianGrid stroke="rgba(148,163,184,.16)" strokeDasharray="3 3" vertical={false} />
@@ -1350,6 +1350,19 @@ function ModelMetricsPage() {
                     <strong>AUROC {fmt(multi[`${t}_auroc`], 3)} <span style={{ color: '#475569', margin: '0 8px' }}>|</span> Opt. Thresh {fmt(multi[`${t}_optimal_threshold`], 2)}</strong>
                   </div>
                 ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="grid one">
+            <div className="panel">
+              <h2>Dual-Head LSTM (Legacy View)</h2>
+              <div className="table">
+                <div><span>Next SpO2 MAE</span><strong>{fmt(dual.next_spo2_mae, 4)}</strong></div>
+                <div><span>Next SpO2 RMSE</span><strong>{fmt(dual.next_spo2_rmse, 4)}</strong></div>
+                <div><span>Hypoxia AUROC</span><strong>{fmt(dual.hypoxia_auroc, 4)}</strong></div>
+                <div><span>Average Precision</span><strong>{fmt(dual.hypoxia_avg_prec, 4)}</strong></div>
+                <div><span>F1 @ 0.5</span><strong>{fmt(dual.hypoxia_f1_thresh05, 4)}</strong></div>
               </div>
             </div>
           </section>
@@ -1420,7 +1433,7 @@ function AuditPage() {
             <JsonPanel title="Audit Verification" data={data.verify} icon={Link2} />
             <JsonPanel title="API Health" data={data.health} icon={Server} />
           </section>
-          
+
           <h2 style={{ marginTop: '32px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Link2 size={18} /> Live Blockchain Audit Feed
           </h2>
@@ -1433,7 +1446,7 @@ function AuditPage() {
                   </div>
                   <div style={{ color: '#94a3b8', fontSize: '11px', marginBottom: '8px' }}>
                     Chain Hash: {block.chain_hash}
-                    <br/>
+                    <br />
                     Payload Hash: {block.payload_hash}
                   </div>
                   <pre style={{ margin: 0, padding: '8px', background: '#0f172a', borderRadius: '4px', color: '#e2e8f0', fontSize: '11px', overflowX: 'auto' }}>
